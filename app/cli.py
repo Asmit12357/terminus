@@ -44,7 +44,7 @@ from app.diagnostics import (
     search_component,
 )
 from app.inventory import MAX_INVENTORY_BYTES, InventoryFormatError, parse_inventory
-from app.models import Finding, ScanRecord
+from app.models import DEMO_SOURCE, Finding, ScanRecord
 from app.paths import (
     CONFIG_TEMPLATE,
     SAMPLE_INVENTORY_CSV,
@@ -143,7 +143,7 @@ def _clip(value: object, width: int) -> str:
 
 
 def _is_demo(findings: list[Finding]) -> bool:
-    return any(f.cve_source == "demo-fixture" for f in findings)
+    return any(f.cve_source == DEMO_SOURCE for f in findings)
 
 
 def _demo_note(findings: list[Finding]) -> str | None:
@@ -334,7 +334,7 @@ def _scan_dict(scan: ScanRecord) -> dict[str, Any]:
 
 def cmd_scan(args: argparse.Namespace) -> int:
     from app.scanner import ScanAlreadyRunning
-    from app.service import run_scan
+    from app.service import LiveDataPresent, run_scan
 
     settings = _settings(args)
     repo = _repo(settings)
@@ -358,6 +358,14 @@ def cmd_scan(args: argparse.Namespace) -> int:
         scan = run_scan(settings, repo, args.mode, demo=demo, progress=progress)
     except ScanAlreadyRunning as exc:
         raise CliError("another scan is already running", EXIT_FAILED) from exc
+    except LiveDataPresent as exc:
+        raise CliError(
+            str(exc),
+            EXIT_FAILED,
+            "try the demo in a separate data folder, e.g. "
+            "`terminus --home terminus-demo import-inventory --sample` then "
+            "`terminus --home terminus-demo scan --demo`",
+        ) from exc
     if args.json:
         _emit_json(_scan_dict(scan))
     else:
@@ -369,6 +377,8 @@ def cmd_scan(args: argparse.Namespace) -> int:
             print(f"  source {st.source}: {st.state.value} {st.detail or ''}")
         for err in scan.errors[:20]:
             print(f"  issue: {err}")
+        for notice in scan.notices:
+            _err(f"note: {notice}")
         if scan.status != "failed":
             print("Next: terminus findings")
     return EXIT_OK if scan.status != "failed" else EXIT_FAILED
@@ -474,7 +484,7 @@ def _print_finding(f: Finding) -> None:
 
     item = f.item
     print(f"{f.cve_id}  [{f.priority.tier} {f.priority.score:.1f}]  finding {f.finding_id}")
-    if f.cve_source == "demo-fixture":
+    if f.cve_source == DEMO_SOURCE:
         print("DEMO DATA (recorded fixture)")
     print(_wrap(f.summary, ""))
 

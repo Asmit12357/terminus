@@ -23,9 +23,11 @@ from app.models import (
 )
 from app.storage.repository import Repository
 
-# Never let a test pick up a developer's real keys or .env file.
+# Never let a test pick up a developer's real keys or settings. Test-control flags
+# (opt-in suites) are not settings and are kept.
+_TEST_FLAGS = {"TERMINUS_INSTALL_TESTS"}
 for _name in list(os.environ):
-    if _name.startswith("TERMINUS_"):
+    if _name.startswith("TERMINUS_") and _name not in _TEST_FLAGS:
         del os.environ[_name]
 
 FIXED_TIME = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)

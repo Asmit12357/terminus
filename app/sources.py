@@ -23,7 +23,7 @@ from app.connectors.osv import OsvConnector, parse_osv
 from app.connectors.search import SearchResult, build_search_provider
 from app.connectors.vendor import VendorAdvisoryFetcher, VendorPage, html_to_text
 from app.matching.normalize import PackageId, parse_cpe
-from app.models import CveRecord, EpssScore, KevEntry, OsvAdvisory
+from app.models import DEMO_SOURCE, CveRecord, EpssScore, KevEntry, OsvAdvisory
 from app.paths import FIXTURES_DIR
 from app.security import sanitize_untrusted
 from app.storage.repository import Repository
@@ -73,7 +73,7 @@ class DemoNvd:
             records: list[CveRecord] = []
             for path in sorted((self.fx.root / "nvd").glob("CVE-*.json")):
                 recs, _, errors = parse_response(
-                    _load(path), self.fx.captured_at, source="demo-fixture"
+                    _load(path), self.fx.captured_at, source=DEMO_SOURCE
                 )
                 records.extend(recs)
                 self.errors.extend(errors)

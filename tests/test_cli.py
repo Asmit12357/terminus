@@ -364,9 +364,17 @@ def test_build_llm_researcher_raises_instead_of_degrading(tmp_path: Path) -> Non
 def test_live_scan_never_falls_back_to_fixtures(
     home: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """With every live source unreachable the scan reports the outage; it must not
-    quietly serve recorded demo data instead."""
+    """The README flow: demo scan first, then live. With every live source
+    unreachable, the live scan reports the outage. It must neither serve recorded
+    demo data nor keep earlier demo records around to be matched as live data."""
     import app.service
+
+    assert run_cli("import-inventory", "--sample") == 0
+    assert run_cli("scan", "--demo", "-q") == 0
+    repo = Repository(home / "terminus.db")
+    assert repo.cve_sources() == {"demo-fixture"}
+    demo_findings = repo.count_findings()
+    assert demo_findings > 0
 
     def unreachable(settings: Settings, repo: Repository, demo: bool | None = None):  # type: ignore[no-untyped-def]
         assert demo is False, "a live scan asked for demo sources"
@@ -386,7 +394,6 @@ def test_live_scan_never_falls_back_to_fixtures(
         return build_live_sources(offline, repo)
 
     monkeypatch.setattr(app.service, "build_sources", unreachable)
-    assert run_cli("import-inventory", "--sample") == 0
     capsys.readouterr()
     run_cli("scan", "--json", "-q")
     scan = json.loads(capsys.readouterr().out)
@@ -395,8 +402,31 @@ def test_live_scan_never_falls_back_to_fixtures(
     states = {s["source"]: s["state"] for s in scan["source_status"]}
     assert states.get("nvd") == "unavailable"
     assert "demo" not in states.values()
-    findings = Repository(home / "terminus.db").list_findings()
-    assert all(f.cve_source != "demo-fixture" for f in findings)
+    assert any(f"{demo_findings} demo findings" in n for n in scan["notices"])
+
+    assert repo.cve_sources() == set()
+    assert repo.list_findings() == []
+    # KEV was unreachable: no stale demo KEV excerpt may stand in for the catalog.
+    assert repo.get_kev("CVE-2021-44228") is None
+    assert repo.kev_retrieved_at() is None
+    # Inventory and scan history survive the switch.
+    assert len(repo.list_items()) == 16
+    assert [s.mode for s in repo.list_scans()] == ["incremental", "demo-incremental"]
+
+
+def test_demo_scan_refuses_to_mix_into_live_results(
+    home: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from tests.conftest import make_cve
+
+    assert run_cli("import-inventory", "--sample") == 0
+    repo = Repository(home / "terminus.db")
+    repo.upsert_cve(make_cve("CVE-2099-0001"))  # a record from a live NVD scan
+    assert run_cli("scan", "--demo", "-q") == cli.EXIT_FAILED
+    err = capsys.readouterr().err
+    assert "holds live scan results" in err and "--home" in err
+    assert repo.cve_sources() == {"nvd"}
+    assert repo.list_scans() == []
 
 
 # ---------------------------------------------------------------------------

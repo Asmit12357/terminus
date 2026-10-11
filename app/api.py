@@ -29,10 +29,17 @@ from app import __version__
 from app.config import Settings, get_settings
 from app.diagnostics import research_problems
 from app.inventory import MAX_INVENTORY_BYTES, InventoryFormatError
-from app.models import MatchStatus
+from app.models import DEMO_SOURCE, MatchStatus
 from app.reports.export import export_csv, export_json, finding_report
 from app.scanner import SCAN_LOCK
-from app.service import get_repo, import_inventory, run_scan, summarize
+from app.service import (
+    LiveDataPresent,
+    check_data_mode,
+    get_repo,
+    import_inventory,
+    run_scan,
+    summarize,
+)
 from app.storage.repository import Repository
 
 log = logging.getLogger("terminus.api")
@@ -195,6 +202,10 @@ def api_start_scan(
     problems = research_problems(settings, demo=req.demo or settings.is_demo)
     if problems:
         raise HTTPException(400, {"configuration_problems": problems})
+    try:
+        check_data_mode(repo, demo=req.demo or settings.is_demo)
+    except LiveDataPresent as exc:
+        raise HTTPException(409, str(exc)) from exc
 
     def worker() -> None:
         try:
@@ -216,7 +227,7 @@ def api_export(
     findings = repo.list_findings(
         tiers=tier, statuses=[s.value for s in status] if status else None
     )
-    demo = any(f.cve_source == "demo-fixture" for f in findings)
+    demo = any(f.cve_source == DEMO_SOURCE for f in findings)
     if format == "csv":
         return Response(
             export_csv(findings),

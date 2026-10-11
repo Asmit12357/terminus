@@ -24,13 +24,19 @@ import streamlit as st  # noqa: E402
 from app.config import get_settings  # noqa: E402
 from app.diagnostics import ConfigurationError  # noqa: E402
 from app.inventory import InventoryFormatError, parse_inventory  # noqa: E402
-from app.models import Finding, InventoryItem, MatchStatus, TrustTier  # noqa: E402
+from app.models import DEMO_SOURCE, Finding, InventoryItem, MatchStatus, TrustTier  # noqa: E402
 from app.paths import SAMPLE_INVENTORY_CSV, SAMPLE_INVENTORY_JSON  # noqa: E402
 from app.reports.export import DISCLAIMER, export_csv, export_json  # noqa: E402
 from app.reports.queue import remediation_plan  # noqa: E402
 from app.risk.scoring import FORMULA, RiskConfig  # noqa: E402
 from app.scanner import ScanAlreadyRunning  # noqa: E402
-from app.service import get_repo, import_inventory, run_scan, summarize  # noqa: E402
+from app.service import (  # noqa: E402
+    LiveDataPresent,
+    get_repo,
+    import_inventory,
+    run_scan,
+    summarize,
+)
 from app.ui import (  # noqa: E402
     FINDING_COLUMNS,
     STATUS_META,
@@ -65,7 +71,7 @@ def all_findings() -> list[Finding]:
 
 
 def demo_banner(findings: list[Finding]) -> None:
-    if any(f.cve_source == "demo-fixture" for f in findings):
+    if any(f.cve_source == DEMO_SOURCE for f in findings):
         captured = min((f.cve_retrieved_at for f in findings if f.cve_retrieved_at), default=None)
         st.info(
             "**Demo data.** Findings use recorded NVD, CISA KEV, FIRST EPSS and OSV responses"
@@ -96,6 +102,10 @@ def run_scan_ui(mode: str, demo: bool) -> None:
             for problem in exc.problems:
                 st.error(problem)
             return
+        except LiveDataPresent as exc:
+            status.update(label="Demo scan not started", state="error")
+            st.error(f"{exc}. Use a separate data folder (TERMINUS_HOME) for demo scans.")
+            return
         state: Literal["complete", "error"] = "complete" if scan.status != "failed" else "error"
         status.update(
             label=f"Scan {scan.status}: {scan.findings_count} findings, "
@@ -104,6 +114,8 @@ def run_scan_ui(mode: str, demo: bool) -> None:
         )
         for issue in scan.errors[:10]:
             st.warning(issue)
+        for notice in scan.notices:
+            st.info(notice)
 
 
 # ---------------------------------------------------------------------------
@@ -806,7 +818,7 @@ def page_export() -> None:
     ]
     st.write(f"{len(chosen)} findings selected.")
     st.caption(DISCLAIMER)
-    demo = any(f.cve_source == "demo-fixture" for f in chosen)
+    demo = any(f.cve_source == DEMO_SOURCE for f in chosen)
     d1, d2 = st.columns(2)
     d1.download_button(
         "Download JSON report",

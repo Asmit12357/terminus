@@ -552,6 +552,11 @@ class Finding(BaseModel):
         return hashlib.sha256(f"{item_id}|{cve_id}".encode()).hexdigest()[:20]
 
 
+# ``CveRecord.source`` / ``Finding.cve_source`` of records served from the bundled
+# demo fixtures. Live and demo data are never mixed in one database.
+DEMO_SOURCE = "demo-fixture"
+
+
 class ScanRecord(BaseModel):
     scan_id: str
     mode: str  # incremental | full | demo
@@ -564,3 +569,4 @@ class ScanRecord(BaseModel):
     findings_count: int = 0
     source_status: list[SourceStatus] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+    notices: list[str] = Field(default_factory=list)

@@ -82,6 +82,12 @@ terminus show 6e32c516               # full evidence for one finding (an ID from
 > especially), so do not act on demo results. A normal `terminus scan` always queries the
 > live sources and never falls back to demo data. If a source is unreachable, the scan
 > reports it as unavailable.
+>
+> Demo and live data are never mixed in one database. Your first live scan removes the
+> demo results and recorded records, keeping your inventory and scan history. A demo
+> scan is refused on a database that already holds live results. To try the demo there
+> anyway, give it its own folder, for example
+> `terminus --home terminus-demo import-inventory --sample`.
 
 ### 2. Scan your own software
 
@@ -509,7 +515,7 @@ The JSON report separates `verified_facts` from `ai_interpretation`. Every expor
 ## Testing
 
 ```bash
-uv run pytest                 # 290 tests, no network, no API keys
+uv run pytest                 # 291 tests, no network, no API keys
 uv run ruff check . && uv run ruff format --check .
 uv run mypy                   # strict-ish type check of app/
 uv run terminus benchmark     # matching benchmark against recorded NVD/OSV data
@@ -555,8 +561,9 @@ The suite covers:
   across processes, the per-user data folder and its overrides, `config.env` versus a
   hostile `.env` in the working folder, missing keys and packages, optional extras that
   are not installed, exit codes, schema-upgrade backups, refusal of newer, foreign or
-  corrupt databases, and the whole core workflow run with Streamlit, FastAPI, uvicorn,
-  pandas and LlamaIndex made unimportable and listening sockets disabled.
+  corrupt databases, demo and live data never mixing, and the whole core workflow run
+  with Streamlit, FastAPI, uvicorn, pandas and LlamaIndex made unimportable and listening
+  sockets disabled.
 
 **Benchmark** (35 cases: real CVEs with synthetic installed versions, expected outcomes
 from vendor advisories):

@@ -15,6 +15,7 @@ from pathlib import Path
 from typing import Literal
 
 from app.models import (
+    DEMO_SOURCE,
     CveRecord,
     EpssScore,
     Finding,
@@ -146,6 +147,30 @@ class Repository:
         with transaction(self.db_path) as conn:
             row = conn.execute("SELECT data FROM cves WHERE cve_id = ?", (cve_id,)).fetchone()
             return CveRecord.model_validate_json(row["data"]) if row else None
+
+    def cve_sources(self) -> set[str]:
+        """Distinct sources of stored CVE records (e.g. ``nvd``, ``demo-fixture``)."""
+        with transaction(self.db_path) as conn:
+            return {r[0] for r in conn.execute("SELECT DISTINCT source FROM cves")}
+
+    def remove_demo_data(self) -> tuple[int, int]:
+        """Delete recorded demo CVEs, findings derived from them, and the KEV/EPSS
+        caches (demo KEV is a 5-entry excerpt that must never stand in for the live
+        catalog). Inventory, scan history and live CVE records are kept.
+        Returns (findings removed, CVE records removed)."""
+        with transaction(self.db_path) as conn:
+            rows = conn.execute("SELECT finding_id, data FROM findings").fetchall()
+            demo_findings = [
+                (r["finding_id"],)
+                for r in rows
+                if Finding.model_validate_json(r["data"]).cve_source == DEMO_SOURCE
+            ]
+            conn.executemany("DELETE FROM findings WHERE finding_id = ?", demo_findings)
+            cves = conn.execute("DELETE FROM cves WHERE source = ?", (DEMO_SOURCE,)).rowcount
+            conn.execute("DELETE FROM kev_entries")
+            conn.execute("DELETE FROM meta WHERE key = 'kev_retrieved_at'")
+            conn.execute("DELETE FROM epss_scores")
+        return len(demo_findings), cves
 
     def cve_revision(self, cve_id: str) -> int | None:
         with transaction(self.db_path) as conn:
