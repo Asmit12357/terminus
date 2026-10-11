@@ -220,7 +220,8 @@ terminus serve-api            # http://127.0.0.1:8000/docs; needs TERMINUS_API_T
 
 The dashboard and API are thin views over the same data as the CLI. If their extras are
 not installed, `terminus dashboard` and `terminus serve-api` exit with code 3 and print
-the install command.
+the install command. The core install has 15 packages. The dashboard and LLM extras add
+about 80 more, and installing them can take several minutes.
 
 ## Update or uninstall
 

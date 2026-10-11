@@ -25,6 +25,7 @@ from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 from starlette.middleware.base import RequestResponseEndpoint
 
+from app import __version__
 from app.config import Settings, get_settings
 from app.diagnostics import research_problems
 from app.inventory import MAX_INVENTORY_BYTES, InventoryFormatError
@@ -38,7 +39,7 @@ log = logging.getLogger("terminus.api")
 
 app = FastAPI(
     title="Terminus API",
-    version="0.1.0",
+    version=__version__,
     description="Vulnerability intelligence and remediation recommendations (read-only research).",
     docs_url="/docs",
     redoc_url=None,
@@ -98,7 +99,7 @@ Auth = Depends(require_token)
 def health(settings: Annotated[Settings, Depends(settings_dep)]) -> dict[str, object]:
     return {
         "status": "ok",
-        "version": "0.1.0",
+        "version": __version__,
         "mode": settings.mode,
         "api_enabled": bool(settings.api_token),
     }

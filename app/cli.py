@@ -696,7 +696,10 @@ def cmd_dashboard(args: argparse.Namespace) -> int:
         f"--server.port={args.port}",
         "--server.maxUploadSize=5",
         "--browser.gatherUsageStats=false",
+        # Headless: no first-run e-mail prompt and no browser auto-launch.
+        "--server.headless=true",
     ]
+    _err(f"Terminus dashboard: open http://127.0.0.1:{args.port} (Ctrl+C to stop)")
     return int(stcli.main() or 0)
 
 
