@@ -187,3 +187,21 @@ def test_findings_that_no_longer_match_are_pruned(settings, repo: Repository) ->
     run_scan(settings, repo, "incremental", demo=True)
     assert repo.get_finding("f" * 20) is None
     assert repo.get_finding(real.finding_id) is not None
+
+
+def test_investigation_cap_keeps_the_most_important_cves(settings, repo: Repository) -> None:
+    """When a scan has more candidate CVEs than the per-scan cap, triage decides
+    which are investigated: KEV-listed and confirmed matches first, never CVE-ID
+    order (which would favour the oldest CVEs)."""
+    capped = settings.model_copy(update={"agent_max_findings_per_scan": 3})
+    scan = demo_scan(capped, repo)
+    kev = {"CVE-2021-45046", "CVE-2014-0160", "CVE-2021-44228", "CVE-2021-42013", "CVE-2021-41773"}
+    investigated = {f.cve_id for f in repo.list_findings()}
+    assert len(investigated) == 3
+    assert investigated <= kev
+    assert any("triaged by KEV listing" in e for e in scan.errors)
+    # Every investigated CVE has a confirmed-affected finding on some asset.
+    assert all(
+        any(f.match.status.value == "confirmed_affected" for f in repo.list_findings(cve_id=c))
+        for c in investigated
+    )

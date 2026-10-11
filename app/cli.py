@@ -333,8 +333,9 @@ def _scan_dict(scan: ScanRecord) -> dict[str, Any]:
 
 
 def cmd_scan(args: argparse.Namespace) -> int:
+    from app.diagnostics import require_research_config
     from app.scanner import ScanAlreadyRunning
-    from app.service import LiveDataPresent, run_scan
+    from app.service import LiveDataPresent, check_data_mode, run_scan
 
     settings = _settings(args)
     repo = _repo(settings)
@@ -346,15 +347,18 @@ def cmd_scan(args: argparse.Namespace) -> int:
         )
     demo = True if args.demo else None
     use_demo = settings.is_demo if demo is None else demo
-    if not args.json:
-        label = "DEMO (recorded fixtures, no network)" if use_demo else "LIVE public APIs"
-        _err(f"Starting {args.mode} scan using {label}. Database: {repo.db_path}")
 
     def progress(fraction: float, message: str) -> None:
         if not args.quiet:
             _err(f"[{fraction * 100:5.1f}%] {message}")
 
     try:
+        # Cheap pre-checks first, so nothing claims a scan started when it cannot.
+        require_research_config(settings, demo=use_demo)
+        check_data_mode(repo, demo=use_demo)
+        if not args.json:
+            label = "DEMO (recorded fixtures, no network)" if use_demo else "LIVE public APIs"
+            _err(f"Starting {args.mode} scan using {label}. Database: {repo.db_path}")
         scan = run_scan(settings, repo, args.mode, demo=demo, progress=progress)
     except ScanAlreadyRunning as exc:
         raise CliError("another scan is already running", EXIT_FAILED) from exc
@@ -616,7 +620,11 @@ def cmd_queue(args: argparse.Namespace) -> int:
             f"{_clip(software, 26):26} {len(row.open_cves):4} {row.kev_listed:3}  {target}"
         )
         if row.caveats:
-            print(_wrap("caveats: " + "; ".join(row.caveats), " " * 12))
+            shown = "; ".join(row.caveats[:3])
+            more = len(row.caveats) - 3
+            if more > 0:
+                shown += f"; +{more} more (terminus queue --json)"
+            print(_wrap("caveats: " + shown, " " * 12))
     return EXIT_OK
 
 

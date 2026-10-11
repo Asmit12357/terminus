@@ -65,6 +65,14 @@ MAX_OSV_CVE_BACKFILL = 25
 KEV_CATALOG_URL = "https://www.cisa.gov/known-exploited-vulnerabilities-catalog"
 
 
+_STATUS_TRIAGE = {
+    MatchStatus.CONFIRMED_AFFECTED: 0,
+    MatchStatus.POTENTIALLY_AFFECTED: 1,
+    MatchStatus.UNVERIFIED: 2,
+    MatchStatus.CONFIRMED_UNAFFECTED: 3,
+}
+
+
 class ScanAlreadyRunning(RuntimeError):
     pass
 
@@ -238,6 +246,8 @@ class Scanner:
         self.progress(0.42, "Matching CVEs against inventory")
         token_index = {i.item_id: _item_tokens(i) for i in items}
         candidates: dict[str, list[InventoryItem]] = {}
+        best_status: dict[str, int] = {}  # preliminary, for triage only
+        cve_index: dict[str, CveRecord] = {}
         all_cves = self.repo.list_cves()
         scan.cves_processed = len(fetched)
         for cve in all_cves:
@@ -247,30 +257,16 @@ class Scanner:
             for item in items:
                 if cve_tokens and not (cve_tokens & token_index[item.item_id]) and not osv:
                     continue
-                if match_item(item, cve, osv) is not None:
+                result = match_item(item, cve, osv)
+                if result is not None:
                     matched.append(item)
+                    rank = _STATUS_TRIAGE[result.status]
+                    best_status[cve.cve_id] = min(best_status.get(cve.cve_id, rank), rank)
             if matched:
                 candidates[cve.cve_id] = matched
+                cve_index[cve.cve_id] = cve
 
-        existing = {(f.cve_id, f.match.item_id) for f in self.repo.list_findings()}
-        to_investigate = sorted(
-            (
-                cve_id
-                for cve_id, its in candidates.items()
-                if mode == "full"
-                or cve_id in fetched
-                or any((cve_id, i.item_id) not in existing for i in its)
-            ),
-            key=lambda c: c,
-        )
-        cap = self.settings.agent_max_findings_per_scan
-        if len(to_investigate) > cap:
-            scan.errors.append(
-                f"{len(to_investigate) - cap} CVEs not investigated (TERMINUS_AGENT_MAX_FINDINGS_PER_SCAN)"
-            )
-            to_investigate = to_investigate[:cap]
-
-        # 4. Enrichment: KEV (whole catalog) and EPSS (candidates) -----------
+        # 4. Enrichment: KEV (whole catalog, also used for triage) and EPSS -----
         ctx = ResearchContext(settings=self.settings, repo=self.repo, sources=self.sources)
         self.progress(0.5, "Loading CISA KEV catalog")
         try:
@@ -295,6 +291,35 @@ class Scanner:
                     else "; KEV status will be reported as unknown"
                 ),
             )
+
+        existing = {(f.cve_id, f.match.item_id) for f in self.repo.list_findings()}
+        pending = [
+            cve_id
+            for cve_id, its in candidates.items()
+            if mode == "full"
+            or cve_id in fetched
+            or any((cve_id, i.item_id) not in existing for i in its)
+        ]
+        # Triage before the per-scan cap so it drops the least important CVEs:
+        # KEV-listed first, then the strongest preliminary match status, then CVSS,
+        # then the most recently published. Deterministic for a given database.
+        kev_ids = self.repo.kev_cve_ids()
+
+        def triage(cve_id: str) -> tuple[bool, int, float, float, str]:
+            cve = cve_index[cve_id]
+            score = cve.cvss.base_score if cve.cvss else 0.0
+            published = cve.published.timestamp() if cve.published else 0.0
+            return (cve_id not in kev_ids, best_status[cve_id], -score, -published, cve_id)
+
+        to_investigate = sorted(pending, key=triage)
+        cap = self.settings.agent_max_findings_per_scan
+        if len(to_investigate) > cap:
+            scan.errors.append(
+                f"{len(to_investigate) - cap} lower-priority candidate CVEs not investigated "
+                f"(cap {cap}, TERMINUS_AGENT_MAX_FINDINGS_PER_SCAN); candidates are triaged by "
+                "KEV listing, match status, CVSS and recency"
+            )
+            to_investigate = to_investigate[:cap]
 
         self.progress(0.55, "Fetching EPSS scores")
         if to_investigate and self.sources.epss is not None:

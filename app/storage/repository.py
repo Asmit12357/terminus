@@ -213,6 +213,10 @@ class Repository:
             ).fetchone()
             return datetime.fromisoformat(row["value"]) if row else None
 
+    def kev_cve_ids(self) -> set[str]:
+        with transaction(self.db_path) as conn:
+            return {r[0] for r in conn.execute("SELECT cve_id FROM kev_entries")}
+
     def get_kev(self, cve_id: str) -> KevEntry | None:
         with transaction(self.db_path) as conn:
             row = conn.execute(

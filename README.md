@@ -110,9 +110,21 @@ terminus scan                 # incremental: CVEs changed since the last scan (f
 ```
 
 Without an NVD API key, NVD allows about 5 requests per 30 seconds, so Terminus spaces
-out its requests. A full scan of the sample inventory takes about half a minute. A free
-key ([request one here](https://nvd.nist.gov/developers/request-an-api-key)) makes scans
+out its requests. In testing (October 2026, no keys), a full scan of the sample inventory
+downloaded about 11,000 CVE records and took 4 to 7 minutes. A free key
+([request one here](https://nvd.nist.gov/developers/request-an-api-key)) makes scans
 faster.
+
+Two limits keep scans bounded. Both are reported in the scan output rather than applied
+silently:
+
+- `TERMINUS_NVD_MAX_PAGES` (default 20 pages of 500): NVD currently modifies more than
+  10,000 records a week, so the date window is often truncated. The scan then reports
+  `completed_with_errors`. Full scans still query every inventory product directly.
+- `TERMINUS_AGENT_MAX_FINDINGS_PER_SCAN` (default 200): candidates beyond the cap are not
+  researched in that scan. Candidates are triaged first (KEV-listed, then confirmed
+  matches, then CVSS, then recency), so the cap drops the least important ones. Raise
+  the cap in `config.env` if you have the time.
 
 ### 4. Review and export
 
@@ -515,7 +527,7 @@ The JSON report separates `verified_facts` from `ai_interpretation`. Every expor
 ## Testing
 
 ```bash
-uv run pytest                 # 291 tests, no network, no API keys
+uv run pytest                 # 292 tests, no network, no API keys
 uv run ruff check . && uv run ruff format --check .
 uv run mypy                   # strict-ish type check of app/
 uv run terminus benchmark     # matching benchmark against recorded NVD/OSV data
