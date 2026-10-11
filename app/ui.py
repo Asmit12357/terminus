@@ -14,8 +14,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from app.matching.versions import Scheme, VersionParseError, compare, scheme_for
-from app.models import Finding, FixStatus, MatchStatus
+from app.models import Finding, MatchStatus
 
 # Reserved status palette (validated): critical / serious / warning / good.
 CRITICAL, SERIOUS, WARNING, GOOD, NEUTRAL = "#d03b3b", "#ec835a", "#fab219", "#0ca30c", "#8a8a85"
@@ -162,38 +161,3 @@ def bar_chart(
     )
     labels = base.mark_text(dy=-8).encode(text=alt.Text(f"{value}:Q"))
     return (bars + labels).properties(height=240)
-
-
-def upgrade_target(findings: list[Finding]) -> tuple[str | None, list[str]]:
-    """Highest fixed version across one item's findings and caveats about it."""
-    notes: list[str] = []
-    item = findings[0].item
-    scheme = Scheme.GENERIC if item.ecosystem.is_distro_package else scheme_for(item.ecosystem)
-    candidates: list[str] = []
-    for f in findings:
-        if f.match.status == MatchStatus.CONFIRMED_UNAFFECTED:
-            continue
-        v = f.fix.fixed_version or f.fix.conservative_target
-        if v:
-            candidates.append(v)
-        if (
-            f.fix.status in (FixStatus.UNKNOWN,)
-            and f.match.status == MatchStatus.CONFIRMED_AFFECTED
-        ):
-            notes.append(f"{f.cve_id}: no verified fix")
-        if f.fix.status == FixStatus.CONFLICT:
-            notes.append(f"{f.cve_id}: sources conflict")
-        if f.fix.status == FixStatus.SINGLE_SOURCE:
-            notes.append(f"{f.cve_id}: single source")
-    if not candidates:
-        return None, notes
-    best = candidates[0]
-    for v in candidates[1:]:
-        try:
-            if compare(v, best, scheme) > 0:
-                best = v
-        except VersionParseError:
-            return None, [*notes, "fixed versions could not be ordered"]
-    if item.ecosystem.is_distro_package:
-        notes.append("upstream version; use the distribution's fixed package")
-    return best, notes

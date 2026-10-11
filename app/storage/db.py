@@ -1,7 +1,13 @@
-"""SQLite connection handling and schema.
+"""SQLite connection handling, schema and schema upgrades.
 
 Every statement in the storage layer uses ``?`` placeholders. Identifiers
 (table/column names) are never built from user input.
+
+Upgrades are additive: ``MIGRATIONS`` maps a schema version to the SQL that
+brings the previous version up to it. Before any migration runs, the existing
+file is copied to ``<name>.v<old>.bak``. A database written by a newer
+Terminus, or a SQLite file that is not a Terminus database, is refused rather
+than modified.
 """
 
 from __future__ import annotations
@@ -12,7 +18,17 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
+from app.paths import ensure_dir
+
 SCHEMA_VERSION = 1
+
+# version -> SQL upgrading (version - 1) to version. Empty until the schema changes.
+MIGRATIONS: dict[int, str] = {}
+
+
+class StorageError(RuntimeError):
+    """The database cannot be used (unreadable, foreign, or from a newer release)."""
+
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS meta (
@@ -107,14 +123,17 @@ CREATE TABLE IF NOT EXISTS http_cache (
 
 
 def connect(db_path: Path) -> sqlite3.Connection:
-    conn = sqlite3.connect(str(db_path), timeout=30)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA foreign_keys = ON")
-    conn.execute("PRAGMA journal_mode = WAL")
-    # WAL + NORMAL stays consistent after a crash; only the last commits before a
-    # power loss may be lost, which is acceptable for re-derivable scan data.
-    conn.execute("PRAGMA synchronous = NORMAL")
-    conn.execute("PRAGMA busy_timeout = 30000")
+    try:
+        conn = sqlite3.connect(str(db_path), timeout=30)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode = WAL")
+        # WAL + NORMAL stays consistent after a crash; only the last commits before a
+        # power loss may be lost, which is acceptable for re-derivable scan data.
+        conn.execute("PRAGMA synchronous = NORMAL")
+        conn.execute("PRAGMA busy_timeout = 30000")
+    except sqlite3.DatabaseError as exc:
+        raise StorageError(f"cannot open database: {exc}") from exc
     return conn
 
 
@@ -143,11 +162,54 @@ def transaction(db_path: Path) -> Iterator[sqlite3.Connection]:
         raise
 
 
+def stored_schema_version(conn: sqlite3.Connection) -> int | None:
+    """Schema version recorded in the file; None for a new, empty database."""
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if "meta" not in tables:
+        if tables:
+            raise StorageError("file is a SQLite database but not a Terminus database")
+        return None
+    row = conn.execute("SELECT value FROM meta WHERE key = 'schema_version'").fetchone()
+    try:
+        return int(row[0]) if row else None
+    except ValueError:
+        raise StorageError(f"unreadable schema version {row[0]!r}") from None
+
+
+def _backup(db_path: Path, version: int) -> Path:
+    target = db_path.with_name(f"{db_path.name}.v{version}.bak")
+    if not target.exists():
+        dest = sqlite3.connect(str(target))
+        try:
+            _thread_connection(db_path).backup(dest)
+        finally:
+            dest.close()
+    return target
+
+
 def init_db(db_path: Path) -> None:
-    db_path.parent.mkdir(parents=True, exist_ok=True)
+    ensure_dir(db_path.parent)
+    try:
+        with transaction(db_path) as conn:
+            current = stored_schema_version(conn)
+    except sqlite3.DatabaseError as exc:
+        raise StorageError(f"{db_path} is not a usable SQLite database: {exc}") from exc
+    except StorageError as exc:
+        raise StorageError(f"{db_path}: {exc}") from exc
+    if current is not None and current > SCHEMA_VERSION:
+        raise StorageError(
+            f"{db_path} was written by a newer Terminus (schema {current}, this release "
+            f"supports {SCHEMA_VERSION}); upgrade Terminus or use another --db"
+        )
+    if current is not None and current < SCHEMA_VERSION:
+        _backup(db_path, current)
     with transaction(db_path) as conn:
         conn.executescript(SCHEMA)
+        start = SCHEMA_VERSION if current is None else current
+        for version in range(start + 1, SCHEMA_VERSION + 1):
+            conn.executescript(MIGRATIONS[version])
         conn.execute(
-            "INSERT OR IGNORE INTO meta(key, value) VALUES (?, ?)",
-            ("schema_version", str(SCHEMA_VERSION)),
+            "INSERT INTO meta(key, value) VALUES ('schema_version', ?) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+            (str(SCHEMA_VERSION),),
         )

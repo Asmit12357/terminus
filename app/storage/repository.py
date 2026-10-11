@@ -309,6 +309,10 @@ class Repository:
             findings = [Finding.model_validate_json(r["data"]) for r in rows]
         return sorted(findings, key=ranking_key)
 
+    def count_findings(self) -> int:
+        with transaction(self.db_path) as conn:
+            return int(conn.execute("SELECT COUNT(*) FROM findings").fetchone()[0])
+
     def prune_findings(self, keep: set[str]) -> int:
         """Delete findings that no longer describe a current candidate (e.g. NVD
         corrected a CPE, or matching rules became stricter)."""

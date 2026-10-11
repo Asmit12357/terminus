@@ -2,7 +2,7 @@
 
 Ground truth comes from the vendors' published affected/fixed versions (cited
 per case), not from Terminus output. Matching runs against the recorded NVD and
-OSV responses in ``data/fixtures``, so results reflect real source data.
+OSV responses in ``app/data/fixtures``, so results reflect real source data.
 
 Outcome classes: affected | unaffected | uncertain | none (no relationship).
 - false positive: predicted affected, truth unaffected/none

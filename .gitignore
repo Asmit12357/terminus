@@ -12,7 +12,7 @@ dist/
 # Secrets and local data
 .env
 .env.*
-!.env.example
+config.env
 *.db
 *.db-shm
 *.db-wal

@@ -10,7 +10,6 @@ commands or changes the systems described in the inventory.
 from __future__ import annotations
 
 import sys
-from collections import defaultdict
 from pathlib import Path
 from typing import Literal
 
@@ -22,10 +21,13 @@ if str(_ROOT) not in sys.path:
 import pandas as pd  # noqa: E402
 import streamlit as st  # noqa: E402
 
-from app.config import PROJECT_ROOT, get_settings  # noqa: E402
+from app.config import get_settings  # noqa: E402
+from app.diagnostics import ConfigurationError  # noqa: E402
 from app.inventory import InventoryFormatError, parse_inventory  # noqa: E402
 from app.models import Finding, InventoryItem, MatchStatus, TrustTier  # noqa: E402
+from app.paths import SAMPLE_INVENTORY_CSV, SAMPLE_INVENTORY_JSON  # noqa: E402
 from app.reports.export import DISCLAIMER, export_csv, export_json  # noqa: E402
+from app.reports.queue import remediation_plan  # noqa: E402
 from app.risk.scoring import FORMULA, RiskConfig  # noqa: E402
 from app.scanner import ScanAlreadyRunning  # noqa: E402
 from app.service import get_repo, import_inventory, run_scan, summarize  # noqa: E402
@@ -43,11 +45,10 @@ from app.ui import (  # noqa: E402
     status_badge,
     status_label,
     tier_badge,
-    upgrade_target,
 )
 
-SAMPLE_JSON = PROJECT_ROOT / "data" / "sample_inventory.json"
-SAMPLE_CSV = PROJECT_ROOT / "data" / "sample_inventory.csv"
+SAMPLE_JSON = SAMPLE_INVENTORY_JSON
+SAMPLE_CSV = SAMPLE_INVENTORY_CSV
 ACTIONABLE = [
     MatchStatus.CONFIRMED_AFFECTED,
     MatchStatus.POTENTIALLY_AFFECTED,
@@ -89,6 +90,11 @@ def run_scan_ui(mode: str, demo: bool) -> None:
             scan = run_scan(settings, repo, mode, demo=demo, progress=on_progress)  # type: ignore[arg-type]
         except ScanAlreadyRunning:
             status.update(label="Another scan is already running", state="error")
+            return
+        except ConfigurationError as exc:
+            status.update(label="Scan not started: configuration problem", state="error")
+            for problem in exc.problems:
+                st.error(problem)
             return
         state: Literal["complete", "error"] = "complete" if scan.status != "failed" else "error"
         status.update(
@@ -263,27 +269,21 @@ def page_queue() -> None:
         "One change per software installation: the highest fixed version across its open "
         "findings. Caveats show where a fix is unverified, single-source or conflicting."
     )
-    groups: dict[str, list[Finding]] = defaultdict(list)
-    for f in queue:
-        groups[f.match.item_id].append(f)
-    plan = []
-    for fs in groups.values():
-        item = fs[0].item
-        target, notes = upgrade_target(fs)
-        plan.append(
-            {
-                "Highest tier": min(f.priority.tier for f in fs),
-                "Max score": max(f.priority.score for f in fs),
-                "Asset": item.asset_id,
-                "Software": item.software_name,
-                "Installed": item.software_version or "unknown",
-                "Open CVEs": len(fs),
-                "KEV-listed": sum(1 for f in fs if f.kev.in_kev),
-                "Target version": target or "verify / consult advisory",
-                "Caveats": "; ".join(dict.fromkeys(notes)) or "-",
-            }
-        )
-    plan_df = pd.DataFrame(plan).sort_values(["Highest tier", "Max score"], ascending=[True, False])
+    plan = [
+        {
+            "Highest tier": row.highest_tier,
+            "Max score": row.max_score,
+            "Asset": row.asset_id,
+            "Software": row.software,
+            "Installed": row.installed_version or "unknown",
+            "Open CVEs": len(row.open_cves),
+            "KEV-listed": row.kev_listed,
+            "Target version": row.target_version or "verify / consult advisory",
+            "Caveats": "; ".join(row.caveats) or "-",
+        }
+        for row in remediation_plan(queue)
+    ]
+    plan_df = pd.DataFrame(plan)  # already ranked by tier, then score
     st.dataframe(
         plan_df,
         hide_index=True,
@@ -717,7 +717,7 @@ def page_scans() -> None:
             "Data source",
             ["Demo fixtures (offline)", "Live public APIs"],
             index=0 if settings.is_demo else 1,
-            help="Demo uses recorded NVD/KEV/EPSS/OSV responses in data/fixtures.",
+            help="Demo uses the recorded NVD/KEV/EPSS/OSV responses bundled with Terminus.",
         )
         mode = c2.radio(
             "Scope",

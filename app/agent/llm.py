@@ -23,6 +23,7 @@ from typing import Any
 from app.agent.state import ResearchState
 from app.agent.tools import BudgetExceeded, ToolRegistry, ToolResult
 from app.config import Settings
+from app.diagnostics import ConfigurationError, llm_component
 from app.security import fence, sanitize_untrusted
 
 log = logging.getLogger("terminus.llm")
@@ -153,7 +154,13 @@ class LlamaIndexResearcher:
 
 
 def build_llm_researcher(settings: Settings) -> LlamaIndexResearcher | None:
-    """Return a researcher only when a provider, key and integration package exist."""
+    """None when no provider is configured; raises ConfigurationError when one is
+    configured but cannot run (missing key or package), never degrading silently."""
+    component = llm_component(settings)
+    if component.state == "off":
+        return None
+    if component.state != "ok":
+        raise ConfigurationError([f"{component.name}: {component.detail}. Fix: {component.hint}"])
     try:
         if settings.llm_provider == "openai" and settings.openai_api_key:
             from llama_index.llms.openai import OpenAI
@@ -173,12 +180,10 @@ def build_llm_researcher(settings: Settings) -> LlamaIndexResearcher | None:
             )
         else:
             return None
-    except ImportError:
-        log.warning(
-            "LLM provider %s configured but its LlamaIndex package is not installed",
-            settings.llm_provider,
-        )
-        return None
+    except ImportError as exc:
+        raise ConfigurationError(
+            [f"LLM research: cannot import the {settings.llm_provider} integration ({exc})"]
+        ) from exc
     return LlamaIndexResearcher(
         llm,
         max_iterations=settings.agent_max_tool_calls,

@@ -29,7 +29,7 @@ for _name in list(os.environ):
         del os.environ[_name]
 
 FIXED_TIME = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
-DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "app" / "data"
 
 
 @pytest.fixture

@@ -1,6 +1,6 @@
 """Construction of live and demo data-source bundles.
 
-Demo mode serves recorded API responses from ``data/fixtures`` through the same
+Demo mode serves recorded API responses bundled in ``app/data/fixtures`` through the same
 parsing code as live mode. Every record served in demo mode keeps the capture
 timestamp from the fixture manifest, and the UI and reports label it DEMO.
 """
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from app.agent.context import SourceBundle
-from app.config import PROJECT_ROOT, Settings
+from app.config import Settings
 from app.connectors.epss import EpssConnector, parse_epss
 from app.connectors.http import HttpClient, SourceUnavailable
 from app.connectors.kev import KevConnector, parse_catalog
@@ -24,10 +24,9 @@ from app.connectors.search import SearchResult, build_search_provider
 from app.connectors.vendor import VendorAdvisoryFetcher, VendorPage, html_to_text
 from app.matching.normalize import PackageId, parse_cpe
 from app.models import CveRecord, EpssScore, KevEntry, OsvAdvisory
+from app.paths import FIXTURES_DIR
 from app.security import sanitize_untrusted
 from app.storage.repository import Repository
-
-FIXTURES_DIR = PROJECT_ROOT / "data" / "fixtures"
 
 
 def build_live_sources(settings: Settings, repo: Repository) -> SourceBundle:

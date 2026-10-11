@@ -1,8 +1,13 @@
 """Runtime configuration.
 
-All settings come from environment variables (prefix ``TERMINUS_``) or a local,
-git-ignored ``.env`` file. Secret values are typed as ``SecretStr`` so they are
-never rendered by ``repr()``, logging, or Pydantic serialization.
+Settings come from, in order of precedence: environment variables (prefix
+``TERMINUS_``), the user's ``config.env`` in the Terminus home (see
+``app.paths``), then defaults. A ``.env`` file in the current directory is
+deliberately *not* read: running Terminus inside an untrusted checkout must not
+redirect its data sources or database.
+
+Secret values are typed as ``SecretStr`` so they are never rendered by
+``repr()``, logging, or Pydantic serialization.
 """
 
 from __future__ import annotations
@@ -11,10 +16,10 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+from app.paths import DB_FILE_NAME, config_file, default_home, resolve_home
 
 DEFAULT_VENDOR_DOMAINS = (
     "openssl.org",
@@ -42,14 +47,16 @@ DEFAULT_VENDOR_DOMAINS = (
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="TERMINUS_",
-        env_file=".env",
+        env_file=None,
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
     # --- general -----------------------------------------------------------
     mode: Literal["live", "demo"] = "live"
-    db_path: Path = PROJECT_ROOT / "terminus.db"
+    # Per-user data directory. Relative db_path values are resolved against it.
+    home: Path = Field(default_factory=default_home)
+    db_path: Path = Path(DB_FILE_NAME)
     log_level: str = "INFO"
 
     # --- API protection ----------------------------------------------------
@@ -97,6 +104,21 @@ class Settings(BaseSettings):
     agent_max_seconds: float = Field(default=60.0, gt=0, le=600)
     agent_max_findings_per_scan: int = Field(default=200, ge=1, le=5000)
 
+    @field_validator("home", "db_path", mode="after")
+    @classmethod
+    def _expand_user(cls, value: Path) -> Path:
+        return value.expanduser()
+
+    @model_validator(mode="after")
+    def _anchor_db_path(self) -> Settings:
+        if not self.db_path.is_absolute():
+            self.db_path = self.home / self.db_path
+        return self
+
+    @property
+    def config_file(self) -> Path:
+        return config_file(self.home)
+
     @property
     def is_demo(self) -> bool:
         return self.mode == "demo"
@@ -118,6 +140,13 @@ class Settings(BaseSettings):
         return names
 
 
+def load_settings(home: Path | None = None) -> Settings:
+    """Settings for the given (or resolved) Terminus home, reading its config.env."""
+    home = (home or resolve_home()).expanduser()
+    env_file = config_file(home)
+    return Settings(_env_file=env_file if env_file.is_file() else None, home=home)
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    return Settings()
+    return load_settings()

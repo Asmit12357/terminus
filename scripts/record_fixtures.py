@@ -1,4 +1,4 @@
-"""Re-record the demo fixtures in data/fixtures from the live public APIs.
+"""Re-record the demo fixtures in app/data/fixtures from the live public APIs.
 
     uv run python scripts/record_fixtures.py
 
@@ -28,7 +28,7 @@ from app.connectors.vendor import VendorAdvisoryFetcher  # noqa: E402
 from app.models import utcnow  # noqa: E402
 from app.storage.repository import Repository  # noqa: E402
 
-OUT = ROOT / "data" / "fixtures"
+OUT = ROOT / "app" / "data" / "fixtures"
 
 DEMO_CVES = [
     "CVE-2021-44228",  # Apache Log4j2 (Log4Shell)

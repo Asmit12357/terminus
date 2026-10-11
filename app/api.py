@@ -26,6 +26,7 @@ from pydantic import BaseModel
 from starlette.middleware.base import RequestResponseEndpoint
 
 from app.config import Settings, get_settings
+from app.diagnostics import research_problems
 from app.inventory import MAX_INVENTORY_BYTES, InventoryFormatError
 from app.models import MatchStatus
 from app.reports.export import export_csv, export_json, finding_report
@@ -190,6 +191,9 @@ def api_start_scan(
         raise HTTPException(409, "a scan is already running")
     if not repo.list_items():
         raise HTTPException(409, "import an inventory before scanning")
+    problems = research_problems(settings, demo=req.demo or settings.is_demo)
+    if problems:
+        raise HTTPException(400, {"configuration_problems": problems})
 
     def worker() -> None:
         try:

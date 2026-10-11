@@ -1,20 +1,28 @@
 [project]
 name = "terminus"
-version = "0.1.0"
-description = "Autonomous vulnerability intelligence and remediation recommendation agent"
+version = "0.2.0"
+description = "Command-line vulnerability intelligence and remediation recommendation agent"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
+authors = [{ name = "Asmit Singh Yadav" }]
+keywords = ["vulnerability", "cve", "nvd", "kev", "epss", "osv", "security", "cli"]
+classifiers = [
+    "Environment :: Console",
+    "Intended Audience :: Information Technology",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+]
+# Core CLI: everything needed to import inventories, scan (live or demo), rank,
+# report and export. No web framework, no LLM, no paid API.
 dependencies = [
-    "fastapi>=0.115",
-    "uvicorn>=0.30",
-    "python-multipart>=0.0.9",
-    "pydantic>=2.8",
+    "pydantic>=2.10",
     "pydantic-settings>=2.4",
     "httpx>=0.27",
     "packaging>=24.0",
-    "streamlit>=1.38",
-    "pandas>=2.2",
 ]
 
 [project.optional-dependencies]
@@ -23,16 +31,31 @@ dependencies = [
 agent = ["llama-index-core>=0.12"]
 agent-openai = ["llama-index-core>=0.12", "llama-index-llms-openai>=0.3"]
 agent-anthropic = ["llama-index-core>=0.12", "llama-index-llms-anthropic>=0.6"]
+# Optional local web dashboard (`terminus dashboard`).
+dashboard = ["streamlit>=1.38", "pandas>=2.2"]
+# Optional REST API (`terminus serve-api`).
+api = ["fastapi>=0.115", "uvicorn>=0.30", "python-multipart>=0.0.9"]
+
+[project.urls]
+Homepage = "https://github.com/Asmit12357/terminus"
+Issues = "https://github.com/Asmit12357/terminus/issues"
 
 [project.scripts]
 terminus = "app.cli:main"
 
 [dependency-groups]
+# Contributors: `uv sync` installs these plus the optional components so the
+# whole test suite (including the API and dashboard helpers) runs.
 dev = [
     "pytest>=8.3",
     "ruff>=0.6",
     "mypy>=1.11",
     "llama-index-core>=0.12",
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "python-multipart>=0.0.9",
+    "streamlit>=1.38",
+    "pandas>=2.2",
 ]
 
 [build-system]
@@ -42,11 +65,15 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["app"]
 
+[tool.hatch.build.targets.sdist]
+include = ["app", "tests", "scripts", "README.md", "LICENSE", "pyproject.toml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
 markers = [
     "live: tests that call real external APIs (skipped unless TERMINUS_LIVE_TESTS=1)",
+    "install: builds a wheel and installs it with `uv tool install` (TERMINUS_INSTALL_TESTS=1)",
 ]
 
 [tool.ruff]

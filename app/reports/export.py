@@ -13,6 +13,7 @@ import io
 import json
 from typing import Any
 
+from app import __version__
 from app.models import Finding, utcnow
 from app.security import csv_safe
 
@@ -90,7 +91,7 @@ def export_json(findings: list[Finding], *, demo: bool = False) -> str:
     return json.dumps(
         {
             "generated_at": utcnow().isoformat(),
-            "generator": "Terminus 0.1.0",
+            "generator": f"Terminus {__version__}",
             "data_mode": "demo (recorded fixtures)" if demo else "live",
             "disclaimer": DISCLAIMER,
             "finding_count": len(findings),

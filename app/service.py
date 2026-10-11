@@ -1,4 +1,4 @@
-"""Application services shared by the CLI, the API and the dashboard."""
+"""Application services shared by the CLI and the optional API and dashboard."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ from typing import Any
 
 from app.agent.llm import build_llm_researcher
 from app.config import Settings, get_settings
+from app.diagnostics import require_research_config
 from app.inventory import InventoryValidationResult, parse_inventory
 from app.models import Finding, ScanRecord
 from app.risk.scoring import RiskConfig
@@ -40,14 +41,19 @@ def run_scan(
     demo: bool | None = None,
     progress: ProgressFn | None = None,
 ) -> ScanRecord:
-    sources = build_sources(settings, repo, demo=demo)
+    """Run one scan. Raises ConfigurationError before touching any source when a
+    configured research provider cannot run."""
+    use_demo = settings.is_demo if demo is None else demo
+    require_research_config(settings, demo=use_demo)
+    llm = build_llm_researcher(settings)
+    sources = build_sources(settings, repo, demo=use_demo)
     try:
         scanner = Scanner(
             settings,
             repo,
             sources,
             risk_config=RiskConfig.load(_risk_path()),
-            llm=build_llm_researcher(settings),
+            llm=llm,
             progress=progress,
         )
         return scanner.run(mode)

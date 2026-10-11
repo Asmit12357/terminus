@@ -3055,18 +3055,13 @@ wheels = [
 
 [[package]]
 name = "terminus"
-version = "0.1.0"
+version = "0.2.0"
 source = { editable = "." }
 dependencies = [
-    { name = "fastapi" },
     { name = "httpx" },
     { name = "packaging" },
-    { name = "pandas" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
-    { name = "python-multipart" },
-    { name = "streamlit" },
-    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
@@ -3081,18 +3076,32 @@ agent-openai = [
     { name = "llama-index-core" },
     { name = "llama-index-llms-openai" },
 ]
+api = [
+    { name = "fastapi" },
+    { name = "python-multipart" },
+    { name = "uvicorn" },
+]
+dashboard = [
+    { name = "pandas" },
+    { name = "streamlit" },
+]
 
 [package.dev-dependencies]
 dev = [
+    { name = "fastapi" },
     { name = "llama-index-core" },
     { name = "mypy" },
+    { name = "pandas" },
     { name = "pytest" },
+    { name = "python-multipart" },
     { name = "ruff" },
+    { name = "streamlit" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "fastapi", specifier = ">=0.115" },
+    { name = "fastapi", marker = "extra == 'api'", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "llama-index-core", marker = "extra == 'agent'", specifier = ">=0.12" },
     { name = "llama-index-core", marker = "extra == 'agent-anthropic'", specifier = ">=0.12" },
@@ -3100,21 +3109,26 @@ requires-dist = [
     { name = "llama-index-llms-anthropic", marker = "extra == 'agent-anthropic'", specifier = ">=0.6" },
     { name = "llama-index-llms-openai", marker = "extra == 'agent-openai'", specifier = ">=0.3" },
     { name = "packaging", specifier = ">=24.0" },
-    { name = "pandas", specifier = ">=2.2" },
-    { name = "pydantic", specifier = ">=2.8" },
+    { name = "pandas", marker = "extra == 'dashboard'", specifier = ">=2.2" },
+    { name = "pydantic", specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.4" },
-    { name = "python-multipart", specifier = ">=0.0.9" },
-    { name = "streamlit", specifier = ">=1.38" },
-    { name = "uvicorn", specifier = ">=0.30" },
+    { name = "python-multipart", marker = "extra == 'api'", specifier = ">=0.0.9" },
+    { name = "streamlit", marker = "extra == 'dashboard'", specifier = ">=1.38" },
+    { name = "uvicorn", marker = "extra == 'api'", specifier = ">=0.30" },
 ]
-provides-extras = ["agent", "agent-openai", "agent-anthropic"]
+provides-extras = ["agent", "agent-openai", "agent-anthropic", "dashboard", "api"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "fastapi", specifier = ">=0.115" },
     { name = "llama-index-core", specifier = ">=0.12" },
     { name = "mypy", specifier = ">=1.11" },
+    { name = "pandas", specifier = ">=2.2" },
     { name = "pytest", specifier = ">=8.3" },
+    { name = "python-multipart", specifier = ">=0.0.9" },
     { name = "ruff", specifier = ">=0.6" },
+    { name = "streamlit", specifier = ">=1.38" },
+    { name = "uvicorn", specifier = ">=0.30" },
 ]
 
 [[package]]
