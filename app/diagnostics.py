@@ -45,6 +45,11 @@ def installed(distribution: str) -> bool:
     return True
 
 
+def not_installed(distributions: list[str]) -> str:
+    verb = "is" if len(distributions) == 1 else "are"
+    return f"{' and '.join(distributions)} {verb} not installed"
+
+
 def install_hint(extra: str) -> str:
     return (
         f'uv tool install --force "terminus[{extra}] @ git+{REPO_URL}"  '
@@ -82,7 +87,7 @@ def llm_component(settings: Settings) -> Component:
         return Component(
             "LLM research",
             "missing",
-            f"TERMINUS_LLM_PROVIDER={provider} but {', '.join(missing)} is not installed",
+            f"TERMINUS_LLM_PROVIDER={provider} but {not_installed(missing)}",
             f"install it: {install_hint(f'agent-{provider}')}",
         )
     return Component("LLM research", "ok", f"{provider} via LlamaIndex")

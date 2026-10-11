@@ -673,7 +673,7 @@ def _require_extra(extra: str, distributions: tuple[str, ...]) -> None:
     missing = [d for d in distributions if not installed(d)]
     if missing:
         raise CliError(
-            f"this optional command needs {', '.join(missing)}, which is not installed",
+            f"this optional command needs packages that are not installed: {', '.join(missing)}",
             EXIT_ENV,
             f"install the '{extra}' extra: {install_hint(extra)}",
         )
