@@ -110,21 +110,27 @@ terminus scan                 # incremental: CVEs changed since the last scan (f
 ```
 
 Without an NVD API key, NVD allows about 5 requests per 30 seconds, so Terminus spaces
-out its requests. In testing (October 2026, no keys), a full scan of the sample inventory
-downloaded about 11,000 CVE records and took 4 to 7 minutes. A free key
-([request one here](https://nvd.nist.gov/developers/request-an-api-key)) makes scans
-faster.
+out its requests. That pacing dominates scan time. In testing (October 2026, no keys), a
+full scan of the sample inventory took about 4½ minutes and an incremental scan about
+4 minutes. A free key ([request one here](https://nvd.nist.gov/developers/request-an-api-key))
+cuts the spacing from 6 seconds to 0.7 seconds per request. Within a scan, each vendor
+advisory page is downloaded once, however many CVEs cite it, and a host that is
+unreachable is not retried for every CVE.
 
-Two limits keep scans bounded. Both are reported in the scan output rather than applied
-silently:
+Two budgets keep scans bounded. Both are reported as notes in the scan output, never
+applied silently:
 
-- `TERMINUS_NVD_MAX_PAGES` (default 20 pages of 500): NVD currently modifies more than
-  10,000 records a week, so the date window is often truncated. The scan then reports
-  `completed_with_errors`. Full scans still query every inventory product directly.
-- `TERMINUS_AGENT_MAX_FINDINGS_PER_SCAN` (default 200): candidates beyond the cap are not
-  researched in that scan. Candidates are triaged first (KEV-listed, then confirmed
-  matches, then CVSS, then recency), so the cap drops the least important ones. Raise
-  the cap in `config.env` if you have the time.
+- `TERMINUS_NVD_MAX_PAGES` (default 20 pages of 500, so 10,000 records): NVD currently
+  modifies more than 10,000 records a week. When a window holds more changes than this
+  budget, Terminus does not page through a truncated list. It fetches every newly
+  published CVE plus every change to the inventory's own products. Nothing that matches
+  the inventory by CPE is skipped.
+- `TERMINUS_AGENT_MAX_FINDINGS_PER_SCAN` (default 200): the number of candidate CVEs
+  researched per scan. Candidates are triaged first: KEV-listed CVEs, then CVEs never
+  researched before, then by match status, CVSS and recency. A large backlog (a first
+  full scan can find over 1,000 old candidate CVEs) is worked through over the next
+  scans, and earlier findings stay in place meanwhile. Raise the budget in `config.env`
+  to finish sooner.
 
 ### 4. Review and export
 
@@ -144,7 +150,7 @@ stderr, results to stdout.
 
 | Command | Purpose |
 |---|---|
-| `terminus init` | Create the data folder, the `config.env` template and the database |
+| `terminus init [--from-db FILE]` | Create the data folder, the `config.env` template and the database; optionally import an existing database |
 | `terminus info` | Show data locations, configured keys (names only) and optional components |
 | `terminus validate FILE` | Check an inventory (JSON/CSV) without importing it |
 | `terminus import-inventory FILE` / `--sample` | Validate and import an inventory, replacing the active one |
@@ -253,18 +259,24 @@ To delete your data as well, remove the Terminus home folder that `terminus info
 ### Upgrading from 0.1
 
 Version 0.1 kept `terminus.db` and `.env` inside the cloned repository folder. To keep
-that history, copy the old database into your Terminus home before the first run (or
-pass `--db PATH/TO/terminus.db`), and move any settings from `.env` into `config.env`.
-On Windows, from the old clone folder:
+that history, import the old database into your Terminus home. Run this from the old
+clone folder:
 
-```powershell
-New-Item -ItemType Directory -Force "$env:LOCALAPPDATA\Terminus"
-Copy-Item .\terminus.db "$env:LOCALAPPDATA\Terminus\terminus.db"
+```bash
+terminus init --from-db terminus.db
 ```
+
+The old file is opened read-only and left unchanged. The import refuses to overwrite a
+Terminus home that already holds an inventory, scans or findings. When you run
+`uv run terminus info` inside an old clone, it points out the 0.1 database for you. Move
+any settings from the old `.env` into `config.env`.
 
 Other changes in 0.2:
 
-- The sample inventory and demo fixtures moved from `data/` to `app/data/`, so they ship
+- The Python package is now `terminus` (it was `app`), so it cannot collide with other
+  projects' `app` packages.
+
+- The sample inventory and demo fixtures moved from `data/` to `terminus/data/`, so they ship
   with the installed package. Use `terminus import-inventory --sample` or
   `terminus sample-inventory`.
 - `.env.example` is now the `config.env` template that `terminus init` installs.
@@ -283,7 +295,7 @@ uv run pytest                 # full suite: no network, no API keys
 ```
 
 In a source checkout you can also run the dashboard directly with
-`uv run streamlit run app/dashboard.py`.
+`uv run streamlit run terminus/dashboard.py`.
 
 ---
 
@@ -320,14 +332,14 @@ inventory (JSON/CSV) --> validation --> SQLite <--+
 
 | Path | Responsibility |
 |---|---|
-| `app/connectors/` | `http.py` hardened client; `nvd.py`, `kev.py`, `epss.py`, `osv.py`, `vendor.py` (allow-listed advisory pages), `search.py` (Tavily/Exa) |
-| `app/matching/` | `normalize.py` (CPE/purl parsing, name normalization, curated aliases), `versions.py` (per-ecosystem comparators, ranges), `matcher.py` (status decision), `fixes.py` (fixed-version verification) |
-| `app/risk/` | `scoring.py` explainable priority engine (`RiskConfig`) |
-| `app/agent/` | `tools.py` (schemas, registry, budgets), `orchestrator.py` (policy, stopping), `llm.py` (LlamaIndex layer, system prompt), `state.py`, `context.py` |
-| `app/storage/` | `db.py` schema/connections, `repository.py` (all SQL, parameterized) |
-| `app/reports/` | `recommendation.py` (deterministic recommendations), `queue.py` (consolidated upgrade plan), `export.py` (JSON/CSV) |
-| `app/` | `cli.py` (the `terminus` command), `scanner.py` pipeline, `sources.py` (live/demo bundles), `service.py`, `config.py` + `paths.py` (settings, data locations), `diagnostics.py` (optional-component checks), `security.py` (untrusted-text handling), `benchmark.py`; optional `api.py`, `dashboard.py`, `ui.py` |
-| `app/data/` | bundled, read-only: synthetic sample inventory, `config.env` template, `fixtures/` recorded API responses for demo mode and tests |
+| `terminus/connectors/` | `http.py` hardened client; `nvd.py`, `kev.py`, `epss.py`, `osv.py`, `vendor.py` (allow-listed advisory pages), `search.py` (Tavily/Exa) |
+| `terminus/matching/` | `normalize.py` (CPE/purl parsing, name normalization, curated aliases), `versions.py` (per-ecosystem comparators, ranges), `matcher.py` (status decision), `fixes.py` (fixed-version verification) |
+| `terminus/risk/` | `scoring.py` explainable priority engine (`RiskConfig`) |
+| `terminus/agent/` | `tools.py` (schemas, registry, budgets), `orchestrator.py` (policy, stopping), `llm.py` (LlamaIndex layer, system prompt), `state.py`, `context.py` |
+| `terminus/storage/` | `db.py` schema/connections, `repository.py` (all SQL, parameterized) |
+| `terminus/reports/` | `recommendation.py` (deterministic recommendations), `queue.py` (consolidated upgrade plan), `export.py` (JSON/CSV) |
+| `terminus/` | `cli.py` (the `terminus` command), `scanner.py` pipeline, `sources.py` (live/demo bundles), `service.py`, `config.py` + `paths.py` (settings, data locations), `diagnostics.py` (optional-component checks), `security.py` (untrusted-text handling), `benchmark.py`; optional `api.py`, `dashboard.py`, `ui.py` |
+| `terminus/data/` | bundled, read-only: synthetic sample inventory, `config.env` template, `fixtures/` recorded API responses for demo mode and tests |
 | `scripts/record_fixtures.py` | re-records the demo fixtures from the live APIs |
 | `tests/` | unit, integration, security and evaluation tests (no network) |
 
@@ -344,7 +356,7 @@ can only choose which research tools to call and write a clearly labelled analys
 One record per software installation on an asset. JSON may be nested
 (`{"assets": [{..., "software": [...]}]}`) or flat (a list, or `{"items": [...]}`). CSV
 uses one row per software item. `terminus sample-inventory [--format csv]` prints the
-bundled sample (`app/data/sample_inventory.json` / `.csv`), which is fully synthetic and
+bundled sample (`terminus/data/sample_inventory.json` / `.csv`), which is fully synthetic and
 uses `*.corp.example` hostnames.
 
 | Field | Required | Notes |
@@ -527,9 +539,9 @@ The JSON report separates `verified_facts` from `ai_interpretation`. Every expor
 ## Testing
 
 ```bash
-uv run pytest                 # 292 tests, no network, no API keys
+uv run pytest                 # 302 tests, no network, no API keys
 uv run ruff check . && uv run ruff format --check .
-uv run mypy                   # strict-ish type check of app/
+uv run mypy                   # strict-ish type check of terminus/
 uv run terminus benchmark     # matching benchmark against recorded NVD/OSV data
 ```
 
@@ -568,7 +580,7 @@ The suite covers:
 - **Exports and API:** JSON structure, CSV formula injection, token enforcement, input
   validation, the allow-list of mutating routes.
 - **Static security checks:** no `eval`/`exec`/`subprocess`/`pickle`/`os.system` in
-  `app/`, and no value-interpolated SQL.
+  `terminus/`, and no value-interpolated SQL.
 - **CLI:** the installed console script run from outside the repository, persistence
   across processes, the per-user data folder and its overrides, `config.env` versus a
   hostile `.env` in the working folder, missing keys and packages, optional extras that
@@ -597,7 +609,7 @@ The five uncertain cases are deliberate:
 ## Configuration reference
 
 All settings are environment variables with the `TERMINUS_` prefix, or lines in
-`config.env` in the Terminus home (template: `app/data/config.env.example`). Environment
+`config.env` in the Terminus home (template: `terminus/data/config.env.example`). Environment
 variables win. Secrets use `SecretStr`, so they never appear in `repr`, logs or
 responses.
 
@@ -673,7 +685,7 @@ in front of them.
 - **Vendor advisories**: the respective vendors (Apache, OpenSSL, curl, nginx, ...). The
   demo fixtures store only short excerpts around CVE mentions.
 
-`app/data/fixtures/` contains API responses recorded on the date in `manifest.json` with
+`terminus/data/fixtures/` contains API responses recorded on the date in `manifest.json` with
 `scripts/record_fixtures.py`. They are used for demo mode and tests. Values (EPSS
 especially) drift over time; live scans always fetch fresh data.
 
@@ -693,9 +705,6 @@ especially) drift over time; live scans always fetch fresh data.
 - Vendor page corroboration is a proximity heuristic over allow-listed pages, not a
   parser of every vendor's format.
 - No scheduler yet. Run `terminus scan` (incremental) from cron or Windows Task Scheduler.
-- The Python package is named `app`. That is harmless with `uv tool install`, where each
-  tool gets its own environment, but do not `pip install` Terminus into a shared
-  environment that already has a top-level `app` package.
 - Verified on Windows 11 and Ubuntu 24.04 (WSL2) with Python 3.12 and 3.13. macOS is
   untested.
 - The LLM layer has been exercised with a scripted mock LLM in tests, not with a live

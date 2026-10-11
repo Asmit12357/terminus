@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.matching.matcher import match_item
-from app.matching.normalize import (
+from terminus.matching.matcher import match_item
+from terminus.matching.normalize import (
     compare_identity,
     normalize_product,
     normalize_vendor,
@@ -9,7 +9,7 @@ from app.matching.normalize import (
     parse_cpe,
     parse_purl,
 )
-from app.models import (
+from terminus.models import (
     ConfigNode,
     Configuration,
     Ecosystem,

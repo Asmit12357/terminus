@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from app.matching.matcher import match_item
-from app.models import (
+from terminus.matching.matcher import match_item
+from terminus.models import (
     CvssData,
     EpssStatus,
     FixAssessment,
@@ -13,7 +13,7 @@ from app.models import (
     KevStatus,
     MatchStatus,
 )
-from app.risk.scoring import RiskConfig, score_finding
+from terminus.risk.scoring import RiskConfig, score_finding
 from tests.conftest import make_cve, make_item, rule
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)

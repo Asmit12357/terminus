@@ -16,11 +16,11 @@ from pathlib import Path
 
 import pytest
 
-from app import cli, diagnostics, paths
-from app.config import Settings, load_settings
-from app.storage import db as dbmod
-from app.storage.db import StorageError
-from app.storage.repository import Repository
+from terminus import cli, diagnostics, paths
+from terminus.config import Settings, load_settings
+from terminus.storage import db as dbmod
+from terminus.storage.db import StorageError
+from terminus.storage.repository import Repository
 from tests.conftest import DATA_DIR
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -159,7 +159,7 @@ def test_core_workflow_runs_without_optional_packages_or_servers(tmp_path: Path)
         socket.socket.listen = no_server
         socket.socket.bind = no_server
 
-        from app.cli import main
+        from terminus.cli import main
 
         codes = {{}}
         for argv in (
@@ -352,7 +352,7 @@ def test_search_provider_without_key_blocks_live_scan_only(
 
 
 def test_build_llm_researcher_raises_instead_of_degrading(tmp_path: Path) -> None:
-    from app.agent.llm import build_llm_researcher
+    from terminus.agent.llm import build_llm_researcher
 
     base = Settings(_env_file=None, db_path=tmp_path / "t.db")
     assert build_llm_researcher(base) is None
@@ -367,7 +367,7 @@ def test_live_scan_never_falls_back_to_fixtures(
     """The README flow: demo scan first, then live. With every live source
     unreachable, the live scan reports the outage. It must neither serve recorded
     demo data nor keep earlier demo records around to be matched as live data."""
-    import app.service
+    import terminus.service
 
     assert run_cli("import-inventory", "--sample") == 0
     assert run_cli("scan", "--demo", "-q") == 0
@@ -378,7 +378,7 @@ def test_live_scan_never_falls_back_to_fixtures(
 
     def unreachable(settings: Settings, repo: Repository, demo: bool | None = None):  # type: ignore[no-untyped-def]
         assert demo is False, "a live scan asked for demo sources"
-        from app.sources import build_live_sources
+        from terminus.sources import build_live_sources
 
         offline = settings.model_copy(
             update={
@@ -393,7 +393,7 @@ def test_live_scan_never_falls_back_to_fixtures(
         )
         return build_live_sources(offline, repo)
 
-    monkeypatch.setattr(app.service, "build_sources", unreachable)
+    monkeypatch.setattr(terminus.service, "build_sources", unreachable)
     capsys.readouterr()
     run_cli("scan", "--json", "-q")
     scan = json.loads(capsys.readouterr().out)
@@ -533,7 +533,7 @@ def test_schema_upgrade_backs_up_and_keeps_data(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     path = tmp_path / "terminus.db"
-    from app.service import import_inventory
+    from terminus.service import import_inventory
 
     import_inventory(Repository(path), (DATA_DIR / "sample_inventory.json").read_bytes(), "s.json")
     monkeypatch.setattr(dbmod, "SCHEMA_VERSION", 2)
@@ -627,3 +627,92 @@ def test_wheel_installs_as_uv_tool(tmp_path: Path) -> None:
     dashboard = term("dashboard")
     assert dashboard.returncode == cli.EXIT_ENV
     assert "terminus[dashboard]" in dashboard.stderr
+
+
+# ---------------------------------------------------------------------------
+# Importing an existing (e.g. 0.1) database
+# ---------------------------------------------------------------------------
+
+
+def _old_database(tmp_path: Path) -> Path:
+    """A database with an inventory, a scan and findings, like 0.1 left in a clone."""
+    from terminus.service import import_inventory, run_scan
+
+    path = tmp_path / "old-clone" / "terminus.db"
+    repo = Repository(path)
+    import_inventory(repo, (DATA_DIR / "sample_inventory.json").read_bytes(), "s.json")
+    run_scan(Settings(_env_file=None, db_path=path), repo, "full", demo=True)
+    dbmod._local.conns = {}  # close the cached handle: the file is now "someone else's"
+    return path
+
+
+def test_init_from_db_imports_history_and_leaves_source_untouched(
+    home: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import hashlib
+
+    old = _old_database(tmp_path)
+    before = hashlib.sha256(old.read_bytes()).hexdigest()
+    assert run_cli("init", "--from-db", str(old)) == 0
+    out = capsys.readouterr().out
+    assert "inventory items: 16, scans: 1, findings:" in out
+    assert hashlib.sha256(old.read_bytes()).hexdigest() == before
+
+    repo = Repository(home / "terminus.db")
+    assert len(repo.list_items()) == 16
+    assert len(repo.list_scans()) == 1
+    assert repo.count_findings() > 0
+    assert run_cli("findings", "--limit", "1") == 0
+
+
+def test_init_from_db_never_overwrites_existing_data(
+    home: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    old = _old_database(tmp_path)
+    assert run_cli("import-inventory", "--sample") == 0
+    target = home / "terminus.db"
+    before = Repository(target).latest_inventory()
+    capsys.readouterr()
+    assert run_cli("init", "--from-db", str(old)) == cli.EXIT_FAILED
+    err = capsys.readouterr().err
+    assert "already holds" in err and "left unchanged" in err
+    assert Repository(target).latest_inventory() == before
+    assert Repository(target).list_scans() == []
+
+
+@pytest.mark.parametrize("kind", ["missing", "foreign", "corrupt", "newer"])
+def test_init_from_db_rejects_unusable_sources(home: Path, tmp_path: Path, kind: str) -> None:
+    source = tmp_path / f"{kind}.db"
+    if kind == "foreign":
+        with closing(sqlite3.connect(source)) as conn:
+            conn.execute("CREATE TABLE notes (body TEXT)")
+            conn.commit()
+    elif kind == "corrupt":
+        source.write_bytes(b"not a database" * 50)
+    elif kind == "newer":
+        Repository(source)
+        with dbmod.transaction(source) as conn:
+            conn.execute("UPDATE meta SET value = '99' WHERE key = 'schema_version'")
+        dbmod._local.conns = {}
+    assert run_cli("init", "--from-db", str(source)) == cli.EXIT_USAGE
+    assert not (home / "terminus.db").exists() or not Repository(home / "terminus.db").list_items()
+
+
+def test_legacy_database_hint_in_source_checkouts(
+    home: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    checkout = tmp_path / "clone"
+    (checkout / "terminus").mkdir(parents=True)
+    (checkout / "pyproject.toml").write_text("[project]\n", encoding="utf-8")
+    monkeypatch.setattr(paths, "PACKAGE_DIR", checkout / "terminus")
+    assert paths.legacy_database() is None
+    (checkout / "terminus.db").write_bytes(b"")
+    assert paths.legacy_database() == checkout / "terminus.db"
+
+    assert run_cli("info") == 0
+    assert f"terminus init --from-db {checkout / 'terminus.db'}" in capsys.readouterr().out
+    # Once the active database holds data, the hint goes away.
+    assert run_cli("import-inventory", "--sample") == 0
+    capsys.readouterr()
+    assert run_cli("info") == 0
+    assert "--from-db" not in capsys.readouterr().out

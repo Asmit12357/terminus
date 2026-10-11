@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from app.inventory import MAX_INVENTORY_BYTES, InventoryFormatError, parse_inventory
-from app.models import Ecosystem
+from terminus.inventory import MAX_INVENTORY_BYTES, InventoryFormatError, parse_inventory
+from terminus.models import Ecosystem
 from tests.conftest import DATA_DIR
 
 GOOD_CSV = (

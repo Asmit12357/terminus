@@ -5,10 +5,10 @@ import io
 import json
 from datetime import timedelta
 
-from app.models import KevEntry, ScanRecord, utcnow
-from app.reports.export import CSV_COLUMNS, DISCLAIMER, export_csv, export_json
-from app.service import import_inventory, run_scan
-from app.storage.repository import Repository
+from terminus.models import KevEntry, ScanRecord, utcnow
+from terminus.reports.export import CSV_COLUMNS, DISCLAIMER, export_csv, export_json
+from terminus.service import import_inventory, run_scan
+from terminus.storage.repository import Repository
 from tests.conftest import DATA_DIR, make_cve, make_item, rule
 
 
@@ -199,9 +199,51 @@ def test_investigation_cap_keeps_the_most_important_cves(settings, repo: Reposit
     investigated = {f.cve_id for f in repo.list_findings()}
     assert len(investigated) == 3
     assert investigated <= kev
-    assert any("triaged by KEV listing" in e for e in scan.errors)
+    # The budget is deliberate, so it is a notice and the scan is not an error.
+    assert any("Researched the 3 highest-priority" in n for n in scan.notices)
+    assert scan.status == "completed"
     # Every investigated CVE has a confirmed-affected finding on some asset.
     assert all(
         any(f.match.status.value == "confirmed_affected" for f in repo.list_findings(cve_id=c))
         for c in investigated
     )
+
+    # Repeated capped scans work through the backlog instead of redoing the same
+    # CVEs: after KEV listing, never-researched candidates come first.
+    demo_scan(capped, repo)
+    after_two = {f.cve_id for f in repo.list_findings()}
+    assert kev <= after_two
+
+
+def test_oversized_nvd_window_switches_to_new_and_inventory_scoped_queries(
+    settings, repo: Repository
+) -> None:
+    """When NVD reports more modified CVEs than the page budget, the scan fetches
+    newly published CVEs plus each inventory product's changes instead of paging a
+    truncated window, says so in a notice, and does not report an incomplete scan."""
+    from terminus.scanner import Scanner
+    from terminus.sources import build_demo_sources
+
+    import_inventory(
+        repo, (DATA_DIR / "sample_inventory.json").read_bytes(), "sample_inventory.json"
+    )
+    small_budget = settings.model_copy(update={"nvd_max_pages": 1, "nvd_results_per_page": 10})
+    sources = build_demo_sources()
+    calls: list[tuple[str, object]] = []
+    real_fetch_window = sources.nvd.fetch_window
+
+    def recording_fetch_window(start, end, field="lastMod", product=None):  # type: ignore[no-untyped-def]
+        calls.append((field, product))
+        return real_fetch_window(start, end, field, product)
+
+    sources.nvd.fetch_window = recording_fetch_window  # type: ignore[method-assign]
+    scan = Scanner(small_budget, repo, sources).run("incremental")
+
+    assert ("pub", None) in calls
+    assert ("lastMod", None) not in calls  # the oversized window itself is never paged
+    scoped = {product for field, product in calls if field == "lastMod"}
+    assert ("apache", "log4j") in scoped and ("openssl", "openssl") in scoped
+    assert any("more than the 10-record page budget" in n for n in scan.notices)
+    assert not any("stopped after" in e for e in scan.errors)
+    assert scan.status == "completed"
+    assert scan.findings_count > 0

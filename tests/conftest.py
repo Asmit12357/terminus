@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 
-from app.config import Settings
-from app.models import (
+from terminus.config import Settings
+from terminus.models import (
     ConfigNode,
     Configuration,
     CpeMatchRule,
@@ -21,7 +21,7 @@ from app.models import (
     OsvRange,
     Reference,
 )
-from app.storage.repository import Repository
+from terminus.storage.repository import Repository
 
 # Never let a test pick up a developer's real keys or settings. Test-control flags
 # (opt-in suites) are not settings and are kept.
@@ -31,7 +31,7 @@ for _name in list(os.environ):
         del os.environ[_name]
 
 FIXED_TIME = datetime(2026, 1, 15, 12, 0, tzinfo=UTC)
-DATA_DIR = Path(__file__).resolve().parent.parent / "app" / "data"
+DATA_DIR = Path(__file__).resolve().parent.parent / "terminus" / "data"
 
 
 @pytest.fixture

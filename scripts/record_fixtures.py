@@ -1,4 +1,4 @@
-"""Re-record the demo fixtures in app/data/fixtures from the live public APIs.
+"""Re-record the demo fixtures in terminus/data/fixtures from the live public APIs.
 
     uv run python scripts/record_fixtures.py
 
@@ -21,14 +21,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app.config import Settings  # noqa: E402
-from app.connectors.http import HttpClient, SourceUnavailable  # noqa: E402
-from app.connectors.nvd import parse_response  # noqa: E402
-from app.connectors.vendor import VendorAdvisoryFetcher  # noqa: E402
-from app.models import utcnow  # noqa: E402
-from app.storage.repository import Repository  # noqa: E402
+from terminus.config import Settings  # noqa: E402
+from terminus.connectors.http import HttpClient, SourceUnavailable  # noqa: E402
+from terminus.connectors.nvd import parse_response  # noqa: E402
+from terminus.connectors.vendor import VendorAdvisoryFetcher  # noqa: E402
+from terminus.models import utcnow  # noqa: E402
+from terminus.storage.repository import Repository  # noqa: E402
 
-OUT = ROOT / "app" / "data" / "fixtures"
+OUT = ROOT / "terminus" / "data" / "fixtures"
 
 DEMO_CVES = [
     "CVE-2021-44228",  # Apache Log4j2 (Log4Shell)

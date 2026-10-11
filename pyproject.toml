@@ -41,7 +41,7 @@ Homepage = "https://github.com/Asmit12357/terminus"
 Issues = "https://github.com/Asmit12357/terminus/issues"
 
 [project.scripts]
-terminus = "app.cli:main"
+terminus = "terminus.cli:main"
 
 [dependency-groups]
 # Contributors: `uv sync` installs these plus the optional components so the
@@ -63,10 +63,10 @@ requires = ["hatchling>=1.25"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["app"]
+packages = ["terminus"]
 
 [tool.hatch.build.targets.sdist]
-include = ["app", "tests", "scripts", "README.md", "LICENSE", "pyproject.toml"]
+include = ["terminus", "tests", "scripts", "README.md", "LICENSE", "pyproject.toml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -97,7 +97,7 @@ max-line-length = 120
 [tool.mypy]
 python_version = "3.12"
 plugins = ["pydantic.mypy"]
-packages = ["app"]
+packages = ["terminus"]
 ignore_missing_imports = true
 warn_unused_ignores = true
 check_untyped_defs = true

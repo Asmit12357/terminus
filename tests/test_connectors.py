@@ -10,23 +10,23 @@ import httpx
 import pytest
 from pydantic import SecretStr
 
-from app.config import Settings
-from app.connectors.epss import EpssConnector
-from app.connectors.http import (
+from terminus.config import Settings
+from terminus.connectors.epss import EpssConnector
+from terminus.connectors.http import (
     HttpClient,
     RedirectEncountered,
     ResponseTooLarge,
     SourceUnavailable,
     host_allowed,
 )
-from app.connectors.kev import KevConnector
-from app.connectors.nvd import NvdConnector, parse_cve
-from app.connectors.osv import OsvConnector
-from app.connectors.search import TavilySearch
-from app.connectors.vendor import VendorAdvisoryFetcher, html_to_text
-from app.matching.normalize import PackageId
-from app.models import Ecosystem
-from app.storage.repository import Repository
+from terminus.connectors.kev import KevConnector
+from terminus.connectors.nvd import NvdConnector, parse_cve
+from terminus.connectors.osv import OsvConnector
+from terminus.connectors.search import TavilySearch
+from terminus.connectors.vendor import VendorAdvisoryFetcher, html_to_text
+from terminus.matching.normalize import PackageId
+from terminus.models import Ecosystem
+from terminus.storage.repository import Repository
 
 Handler = Any
 
@@ -408,7 +408,7 @@ def test_vendor_fetch_enforces_allowlist_and_redirects(settings: Settings) -> No
 
 
 def test_vendor_corroboration_requires_proximity_to_cve() -> None:
-    from app.connectors.vendor import VendorPage
+    from terminus.connectors.vendor import VendorPage
 
     text = "CVE-2023-38545 is a heap overflow." + (" filler" * 400) + " Release 8.4.0 notes."
     page = VendorPage(url="u", final_url="u", text=text, retrieved_at=datetime.now(UTC))
@@ -446,3 +446,63 @@ def test_tavily_sends_key_in_header_and_sanitizes(settings: Settings) -> None:
     assert len(results) == 1
     assert "override_instructions" in results[0].injection_flags
     assert "secret_exfiltration" in results[0].injection_flags
+
+
+def test_nvd_window_size_and_product_scoped_window(settings: Settings) -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return httpx.Response(200, json=nvd_page([], 12_345))
+
+    nvd = NvdConnector(client(settings, handler), settings)
+    end = datetime(2026, 1, 10, tzinfo=UTC)
+    # One one-record request per 120-day chunk; totals are summed.
+    assert nvd.window_size(end - timedelta(days=200), end) == 2 * 12_345
+    assert [r.url.params["resultsPerPage"] for r in seen] == ["1", "1"]
+
+    seen.clear()
+    list(nvd.fetch_window(end - timedelta(days=7), end, product=("apache", "log4j")))
+    params = seen[0].url.params
+    assert params["virtualMatchString"] == "cpe:2.3:*:apache:log4j"
+    assert params["lastModStartDate"] == "2026-01-03T00:00:00.000"
+    assert params["lastModEndDate"] == "2026-01-10T00:00:00.000"
+
+    seen.clear()
+    list(nvd.fetch_window(end - timedelta(days=7), end, field="pub"))
+    assert "pubStartDate" in seen[0].url.params
+    assert "virtualMatchString" not in seen[0].url.params
+
+
+def test_vendor_pages_are_fetched_once_per_scan_and_dead_hosts_skipped(
+    settings: Settings,
+) -> None:
+    seen: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(f"{req.url.host}{req.url.path}")
+        if req.url.host == "nginx.org":
+            raise httpx.ConnectError("connection refused", request=req)
+        if req.url.path == "/missing":
+            return httpx.Response(404)
+        return httpx.Response(200, text="<p>CVE-2023-38545 fixed in 8.4.0</p>")
+
+    fetcher = VendorAdvisoryFetcher(client(settings, handler), settings)
+    first = fetcher.fetch("https://curl.se/docs/CVE-2023-38545.html")
+    assert fetcher.fetch("https://curl.se/docs/CVE-2023-38545.html") is first
+    assert seen.count("curl.se/docs/CVE-2023-38545.html") == 1
+
+    # A network failure (after all retries) marks the host unreachable for this scan.
+    with pytest.raises(SourceUnavailable, match="network error"):
+        fetcher.fetch("https://nginx.org/en/security_advisories.html")
+    attempts = len(seen)
+    with pytest.raises(SourceUnavailable, match="unreachable earlier in this scan"):
+        fetcher.fetch("https://nginx.org/other.html")
+    with pytest.raises(SourceUnavailable, match="network error"):
+        fetcher.fetch("https://nginx.org/en/security_advisories.html")
+    assert len(seen) == attempts  # neither call touched the network
+
+    # An HTTP error on one page does not condemn the whole host.
+    with pytest.raises(SourceUnavailable, match="HTTP 404"):
+        fetcher.fetch("https://curl.se/missing")
+    assert fetcher.fetch("https://curl.se/docs/other.html").text

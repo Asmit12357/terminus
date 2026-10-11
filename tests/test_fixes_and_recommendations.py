@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
-from app.connectors.vendor import VendorPage
-from app.matching.fixes import assess_fix
-from app.matching.matcher import match_item
-from app.models import FixStatus, KevStatus, MatchStatus, TrustTier
-from app.reports.recommendation import build_recommendation
-from app.security import sanitize_untrusted
+from terminus.connectors.vendor import VendorPage
+from terminus.matching.fixes import assess_fix
+from terminus.matching.matcher import match_item
+from terminus.models import FixStatus, KevStatus, MatchStatus, TrustTier
+from terminus.reports.recommendation import build_recommendation
+from terminus.security import sanitize_untrusted
 from tests.conftest import make_cve, make_item, make_osv, rule
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)

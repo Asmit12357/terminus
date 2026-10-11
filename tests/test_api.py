@@ -7,9 +7,9 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 
-from app.api import app, settings_dep
-from app.config import Settings
-from app.service import get_repo, import_inventory, run_scan
+from terminus.api import app, settings_dep
+from terminus.config import Settings
+from terminus.service import get_repo, import_inventory, run_scan
 from tests.conftest import DATA_DIR
 
 TOKEN = "test-token-0123456789"

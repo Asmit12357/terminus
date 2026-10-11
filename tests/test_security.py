@@ -7,11 +7,11 @@ from pathlib import Path
 
 import pytest
 
-from app.benchmark import run_benchmark
-from app.config import Settings
-from app.security import csv_safe, detect_injection, fence, sanitize_untrusted
+from terminus.benchmark import run_benchmark
+from terminus.config import Settings
+from terminus.security import csv_safe, detect_injection, fence, sanitize_untrusted
 
-APP_DIR = Path(__file__).resolve().parent.parent / "app"
+APP_DIR = Path(__file__).resolve().parent.parent / "terminus"
 
 FORBIDDEN_CALLS = {"eval", "exec", "compile", "__import__"}
 FORBIDDEN_MODULES = {"subprocess", "pickle", "marshal", "shelve", "yaml", "dill", "pty", "ctypes"}

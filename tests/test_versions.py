@@ -4,7 +4,7 @@ from itertools import pairwise
 
 import pytest
 
-from app.matching.versions import (
+from terminus.matching.versions import (
     RangeCheck,
     Scheme,
     VersionParseError,
@@ -12,7 +12,7 @@ from app.matching.versions import (
     compare,
     upstream_version,
 )
-from app.models import Ecosystem
+from terminus.models import Ecosystem
 
 
 def ordered(scheme: Scheme, versions: list[str]) -> None:

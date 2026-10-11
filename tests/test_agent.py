@@ -7,16 +7,16 @@ from typing import Any
 
 import pytest
 
-from app.agent.context import ResearchContext, SourceBundle
-from app.agent.orchestrator import ResearchAgent, next_step
-from app.agent.state import ResearchState
-from app.agent.tools import Budget, BudgetExceeded, ResearchTools, ToolRegistry, build_specs
-from app.config import Settings
-from app.connectors.http import SourceUnavailable
-from app.connectors.search import SearchResult
-from app.models import KevEntry, MatchStatus, Reference, TrustTier
-from app.security import sanitize_untrusted
-from app.storage.repository import Repository
+from terminus.agent.context import ResearchContext, SourceBundle
+from terminus.agent.orchestrator import ResearchAgent, next_step
+from terminus.agent.state import ResearchState
+from terminus.agent.tools import Budget, BudgetExceeded, ResearchTools, ToolRegistry, build_specs
+from terminus.config import Settings
+from terminus.connectors.http import SourceUnavailable
+from terminus.connectors.search import SearchResult
+from terminus.models import KevEntry, MatchStatus, Reference, TrustTier
+from terminus.security import sanitize_untrusted
+from terminus.storage.repository import Repository
 from tests.conftest import make_cve, make_item, rule
 
 NOW = datetime(2026, 1, 1, tzinfo=UTC)
@@ -274,7 +274,7 @@ def test_llamaindex_agent_uses_registry_and_cannot_escape(
     repo: Repository, settings: Settings
 ) -> None:
     pytest.importorskip("llama_index.core")
-    from app.agent.llm import LlamaIndexResearcher
+    from terminus.agent.llm import LlamaIndexResearcher
 
     ctx, items = setup(repo, settings, description=INJECTION)
     # A "compromised" model: follows the injected text, tries other CVEs and forged arguments.
@@ -305,8 +305,8 @@ def test_llamaindex_agent_uses_registry_and_cannot_escape(
 
 
 def test_llm_tool_output_fences_untrusted_text() -> None:
-    from app.agent.llm import render_for_llm
-    from app.agent.tools import ToolResult
+    from terminus.agent.llm import render_for_llm
+    from terminus.agent.tools import ToolResult
 
     rendered = render_for_llm(
         ToolResult(
