@@ -1,0 +1,161 @@
+{
+  "_comment": "Synthetic sample inventory for Terminus. Hostnames use the reserved .example domain; no real infrastructure is described.",
+  "assets": [
+    {
+      "asset_id": "web-prod-01",
+      "hostname": "web-prod-01.corp.example",
+      "os_name": "Ubuntu",
+      "os_version": "22.04",
+      "criticality": "critical",
+      "internet_exposed": true,
+      "environment": "production",
+      "business_context": "Customer-facing storefront",
+      "owner": "web-platform",
+      "software": [
+        {
+          "software_name": "Apache HTTP Server",
+          "software_version": "2.4.49",
+          "vendor": "The Apache Software Foundation",
+          "cpe": "cpe:2.3:a:apache:http_server:2.4.49:*:*:*:*:*:*:*"
+        },
+        {
+          "software_name": "OpenSSL",
+          "software_version": "3.0.13",
+          "vendor": "OpenSSL Project",
+          "cpe": "cpe:2.3:a:openssl:openssl:3.0.13:*:*:*:*:*:*:*"
+        },
+        {
+          "software_name": "openssh-server",
+          "software_version": "1:8.9p1-3ubuntu0.10",
+          "ecosystem": "deb",
+          "purl": "pkg:deb/ubuntu/openssh-server@1:8.9p1-3ubuntu0.10"
+        }
+      ]
+    },
+    {
+      "asset_id": "app-prod-02",
+      "hostname": "app-prod-02.corp.example",
+      "os_name": "Red Hat Enterprise Linux",
+      "os_version": "9.3",
+      "criticality": "high",
+      "internet_exposed": false,
+      "environment": "production",
+      "business_context": "Order processing service",
+      "owner": "commerce-backend",
+      "software": [
+        {
+          "software_name": "log4j-core",
+          "software_version": "2.14.1",
+          "ecosystem": "maven",
+          "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1"
+        },
+        {
+          "software_name": "requests",
+          "software_version": "2.28.1",
+          "ecosystem": "pypi"
+        },
+        {
+          "software_name": "curl",
+          "software_version": "7.76.1-26.el9",
+          "ecosystem": "rpm"
+        }
+      ]
+    },
+    {
+      "asset_id": "api-stg-01",
+      "hostname": "api-stg-01.corp.example",
+      "os_name": "Debian",
+      "os_version": "12",
+      "criticality": "medium",
+      "internet_exposed": true,
+      "environment": "staging",
+      "business_context": "Partner API gateway (staging)",
+      "owner": "integrations",
+      "software": [
+        {
+          "software_name": "lodash",
+          "software_version": "4.17.20",
+          "ecosystem": "npm"
+        },
+        {
+          "software_name": "requests",
+          "software_version": "2.31.0",
+          "ecosystem": "pypi"
+        },
+        {
+          "software_name": "curl",
+          "software_version": "8.2.1",
+          "vendor": "Haxx",
+          "cpe": "cpe:2.3:a:haxx:curl:8.2.1:*:*:*:*:*:*:*"
+        },
+        {
+          "software_name": "nginx",
+          "software_version": "1.18.0",
+          "vendor": "F5"
+        }
+      ]
+    },
+    {
+      "asset_id": "dev-ws-07",
+      "hostname": "dev-ws-07.corp.example",
+      "os_name": "Windows",
+      "os_version": "11 23H2",
+      "criticality": "low",
+      "internet_exposed": false,
+      "environment": "development",
+      "business_context": "Developer workstation",
+      "software": [
+        {
+          "software_name": "log4j-core",
+          "software_version": "2.17.1",
+          "ecosystem": "maven",
+          "purl": "pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1"
+        },
+        {
+          "software_name": "curl",
+          "vendor": "curl project"
+        },
+        {
+          "software_name": "OpenSSL",
+          "software_version": "1.0.1f"
+        }
+      ]
+    },
+    {
+      "asset_id": "legacy-appl-03",
+      "hostname": "legacy-appl-03.corp.example",
+      "os_name": "Acme Appliance OS",
+      "os_version": "4.2",
+      "criticality": "high",
+      "internet_exposed": true,
+      "environment": "production",
+      "business_context": "Legacy remote-access appliance",
+      "software": [
+        {
+          "software_name": "OpenSSL",
+          "software_version": "1.0.1e",
+          "vendor": "Acme Appliances Inc."
+        },
+        {
+          "software_name": "nginx",
+          "software_version": "1.18.0-acme-build7",
+          "vendor": "F5"
+        }
+      ]
+    },
+    {
+      "asset_id": "ci-runner-05",
+      "hostname": "ci-runner-05.corp.example",
+      "os_name": "Ubuntu",
+      "os_version": "24.04",
+      "criticality": "medium",
+      "software": [
+        {
+          "software_name": "requests",
+          "software_version": "2.25.1",
+          "ecosystem": "pypi"
+        }
+      ]
+    }
+  ]
+}

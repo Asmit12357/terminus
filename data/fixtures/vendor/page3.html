@@ -1,0 +1,59 @@
+<!-- Excerpts recorded from https://httpd.apache.org/security/vulnerabilities_24.html at 2026-10-11T03:18:43.849143+00:00 -->
+<p>
+
+Acknowledgements: Chamal
+
+Reported to security team2021-12-07
+
+Fixed by r1896039 in 2.4.x2021-12-16
+
+Update 2.4.52 released2021-12-20
+
+Affects&lt;=2.4.51
+
+Fixed in Apache HTTP Server 2.4.51
+
+critical: Path Traversal and Remote Code Execution in Apache HTTP Server 2.4.49 and 2.4.50 (incomplete fix of CVE-2021-41773)
+(CVE-2021-42013)
+
+It was found that the fix for CVE-2021-41773 in Apache HTTP Server 2.4.50 was insufficient. An attacker could use a path traversal attack to map URLs to files outside the directories configured by Alias-like directives. 
+
+If files outside of these directories are not protected by</p>
+<hr>
+<p>s: Chamal
+
+Reported to security team2021-12-07
+
+Fixed by r1896039 in 2.4.x2021-12-16
+
+Update 2.4.52 released2021-12-20
+
+Affects&lt;=2.4.51
+
+Fixed in Apache HTTP Server 2.4.51
+
+critical: Path Traversal and Remote Code Execution in Apache HTTP Server 2.4.49 and 2.4.50 (incomplete fix of CVE-2021-41773)
+(CVE-2021-42013)
+
+It was found that the fix for CVE-2021-41773 in Apache HTTP Server 2.4.50 was insufficient. An attacker could use a path traversal attack to map URLs to files outside the directories configured by Alias-like directives. 
+
+If files outside of these directories are not protected by the usual defaul</p>
+<hr>
+<p>kend server.
+
+This issue affects Apache HTTP Server: from 2.4.0 through 2.4.68.
+
+Acknowledgements: finder: lokerxx
+
+Reported to security team2026-05-15
+
+fixed in 2.4.x by r19386562026-10-01
+
+Update 2.4.69 released2026-10-01
+
+Affects2.4.0 through 2.4.68
+
+low: mod_auth_digest reauthentication attack
+(CVE-2026-48005)
+
+Missing authentication checks in mod_auth_digest in Apache Software Foundation Apache HTTP Server before 2.4.69 on all platforms allows an unauthenticated remote client to cause a denial of service (forced re-authentication) via forged Authorization headers when Digest authentication is enabled </p>

@@ -1,0 +1,17 @@
+asset_id,hostname,os_name,os_version,software_name,software_version,ecosystem,vendor,cpe,purl,criticality,internet_exposed,environment,business_context,owner
+web-prod-01,web-prod-01.corp.example,Ubuntu,22.04,Apache HTTP Server,2.4.49,generic,The Apache Software Foundation,cpe:2.3:a:apache:http_server:2.4.49:*:*:*:*:*:*:*,,critical,true,production,Customer-facing storefront,web-platform
+web-prod-01,web-prod-01.corp.example,Ubuntu,22.04,OpenSSL,3.0.13,generic,OpenSSL Project,cpe:2.3:a:openssl:openssl:3.0.13:*:*:*:*:*:*:*,,critical,true,production,Customer-facing storefront,web-platform
+web-prod-01,web-prod-01.corp.example,Ubuntu,22.04,openssh-server,1:8.9p1-3ubuntu0.10,deb,,,pkg:deb/ubuntu/openssh-server@1:8.9p1-3ubuntu0.10,critical,true,production,Customer-facing storefront,web-platform
+app-prod-02,app-prod-02.corp.example,Red Hat Enterprise Linux,9.3,log4j-core,2.14.1,maven,,,pkg:maven/org.apache.logging.log4j/log4j-core@2.14.1,high,false,production,Order processing service,commerce-backend
+app-prod-02,app-prod-02.corp.example,Red Hat Enterprise Linux,9.3,requests,2.28.1,pypi,,,,high,false,production,Order processing service,commerce-backend
+app-prod-02,app-prod-02.corp.example,Red Hat Enterprise Linux,9.3,curl,7.76.1-26.el9,rpm,,,,high,false,production,Order processing service,commerce-backend
+api-stg-01,api-stg-01.corp.example,Debian,12,lodash,4.17.20,npm,,,,medium,true,staging,Partner API gateway (staging),integrations
+api-stg-01,api-stg-01.corp.example,Debian,12,requests,2.31.0,pypi,,,,medium,true,staging,Partner API gateway (staging),integrations
+api-stg-01,api-stg-01.corp.example,Debian,12,curl,8.2.1,generic,Haxx,cpe:2.3:a:haxx:curl:8.2.1:*:*:*:*:*:*:*,,medium,true,staging,Partner API gateway (staging),integrations
+api-stg-01,api-stg-01.corp.example,Debian,12,nginx,1.18.0,generic,F5,,,medium,true,staging,Partner API gateway (staging),integrations
+dev-ws-07,dev-ws-07.corp.example,Windows,11 23H2,log4j-core,2.17.1,maven,,,pkg:maven/org.apache.logging.log4j/log4j-core@2.17.1,low,false,development,Developer workstation,
+dev-ws-07,dev-ws-07.corp.example,Windows,11 23H2,curl,,generic,curl project,,,low,false,development,Developer workstation,
+dev-ws-07,dev-ws-07.corp.example,Windows,11 23H2,OpenSSL,1.0.1f,generic,,,,low,false,development,Developer workstation,
+legacy-appl-03,legacy-appl-03.corp.example,Acme Appliance OS,4.2,OpenSSL,1.0.1e,generic,Acme Appliances Inc.,,,high,true,production,Legacy remote-access appliance,
+legacy-appl-03,legacy-appl-03.corp.example,Acme Appliance OS,4.2,nginx,1.18.0-acme-build7,generic,F5,,,high,true,production,Legacy remote-access appliance,
+ci-runner-05,ci-runner-05.corp.example,Ubuntu,24.04,requests,2.25.1,pypi,,,,medium,,,,

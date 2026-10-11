@@ -1,0 +1,344 @@
+<!-- Excerpts recorded from https://logging.apache.org/log4j/2.x/security.html at 2026-10-11T03:18:43.262137+00:00 -->
+<p>AL (CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H)
+
+Components affected
+
+log4j-core
+
+Versions affected
+
+[2.0-beta9, 2.3.1) ∪ [2.4, 2.12.3) ∪ [2.13.0, 2.16.0)
+
+Versions fixed
+
+2.3.1 (for Java 6), 2.12.3 (for Java 7), and 2.16.0 (for Java 8 and later)
+
+Description
+
+It was found that the fix to address CVE-2021-44228 in Log4j 2.15.0 was incomplete in certain non-default configurations.
+When the logging configuration uses a non-default Pattern Layout with a Thread Context Lookup (for example, $${ctx:loginId}), attackers with control over Thread Context Map (MDC) can craft malicious input data using a JNDI Lookup</p>
+<hr>
+<p>gned to the remaining issue, which concerns the MapMessage.asJson() serialization in Apache Log4j API and is fixed in versions 2.25.5 and 2.26.1.
+
+Credits
+
+This issue was discovered by Ap4sh (Samy Medjahed) and Ethicxz (Eliott Laurie).
+
+References
+
+CVE-2026-34481
+
+Pull request that fixes the issue
+
+CVE-2026-34480
+
+Summary
+
+Silent log event loss in XmlLayout due to unescaped XML 1.0 forbidden characters
+
+CVSS 4.x Score &amp; Vector
+
+6.9 MEDIUM (CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:L/SA:N)
+
+Components affected
+
+Log4j Core
+
+Versions affected
+
+[2.0-alpha1, 2.25.4) ∪ [3.0.0-alpha1, 3.0.0-beta3]
+
+</p>
+<hr>
+<p> Log4j 2 migration guide,
+and specifically the section on eliminating reliance on the bridge.
+
+Credits
+
+This issue was originally reported by Ap4sh (Samy Medjahed) and Ethicxz (Eliott Laurie), and independently reported by jabaltarik1.
+
+References
+
+CVE-2026-34479
+
+Pull request that fixes the issue
+
+CVE-2026-34478
+
+Summary
+
+Log injection in Rfc5424Layout due to silent configuration incompatibility
+
+CVSS 4.x Score &amp; Vector
+
+6.9 MEDIUM (CVSS:4.0/AV:N/AC:L/AT:N/PR:N/UI:N/VC:N/VI:N/VA:N/SC:N/SI:L/SA:N)
+
+Components affected
+
+Log4j Core
+
+Versions affected
+
+[2.21.0, 2.25.4) ∪ [3.0.0-beta1, 3.0.0-beta3]
+
+Versions fi</p>
+<hr>
+<p>der are not affected, as its configuration attributes were not modified.
+
+Remediation
+
+Users are advised to upgrade to Apache Log4j Core version 2.25.4, which corrects this issue.
+
+Credits
+
+This issue was discovered by Samuli Leinonen.
+
+References
+
+CVE-2026-34478
+
+Pull request that fixes the issue
+
+CVE-2026-34477
+
+Summary
+
+verifyHostName attribute silently ignored in TLS configuration
+
+CVSS 4.x Score &amp; Vector
+
+6.3 MEDIUM (CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:L/SA:N)
+
+Components affected
+
+Log4j Core
+
+Versions affected
+
+[2.12.0, 2.25.4) ∪ [3.0.0-alpha1, 3.0.0-beta3]
+
+Versions fixed
+
+2.25.4</p>
+<hr>
+<p>R file are not impacted by this vulnerability.
+
+Credits
+
+Independently discovered by Hideki Okamoto of Akamai Technologies, Guy Lederfein of Trend Micro Research working with Trend Micro’s Zero Day Initiative, and another anonymous vulnerability researcher.
+
+References
+
+CVE-2021-45105
+
+LOG4J2-3230
+
+CVE-2021-45046
+
+Summary
+
+Thread Context Lookup is vulnerable to remote code execution in certain configurations
+
+CVSS 3.x Score &amp; Vector
+
+9.0 CRITICAL (CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:H)
+
+Components affected
+
+log4j-core
+
+Versions affected
+
+[2.0-beta9, 2.3.1) ∪ [2.4, 2.12.3) ∪ [2.13.0, 2.16.0)
+
+Versions</p>
+<hr>
+<p>emediation
+
+Users are recommended to upgrade to version 1.5.0, which fixes the issue.
+
+Credits
+
+This issue was discovered and remediated with support from the Sovereign Tech Agency, through the Log4j Bug Bounty Program on YesWeHack.
+
+References
+
+CVE-2025-54812
+
+Pull request #509
+
+Pull request #514
+
+CVE-2021-44832
+
+Summary
+
+JDBC appender is vulnerable to remote code execution in certain configurations
+
+CVSS 3.x Score &amp; Vector
+
+6.6 MEDIUM (CVSS:3.1/AV:N/AC:H/PR:H/UI:N/S:U/C:H/I:H/A:H)
+
+Components affected
+
+log4j-core
+
+Versions affected
+
+[2.0-beta7, 2.3.1) ∪ [2.4, 2.12.3) ∪ [2.13.0, 2.17.0)
+
+Versions fixed
+
+2.</p>
+<hr>
+<p>side the scope of the threat model.
+
+Mitigation
+
+Users are advised to upgrade to Apache Log4net version 2.0.10, which fixes this issue.
+
+Credits
+
+This issue was discovered by Karthik Kumar Balasundaram.
+
+References
+
+CVE-2018-1285
+
+LOG4NET-575
+
+Security fix commit
+
+Pull request that fixes the issue
+
+CVE-2017-5645
+
+Summary
+
+TCP/UDP socket servers can be exploited to execute arbitrary code
+
+CVSS 2.0 Score &amp; Vector
+
+7.5 HIGH (AV:N/AC:L/Au:N/C:P/I:P/A:P)
+
+Components affected
+
+log4j-core
+
+Versions affected
+
+[2.0-alpha1, 2.8.2)
+
+Versions fixed
+
+2.8.2 (for Java 7 and later)
+
+Description
+
+When using the TCP socket </p>
+<hr>
+<p>ource names to the java protocol.
+
+Mitigation
+
+Upgrade to 2.3.1 (for Java 6), 2.12.3 (for Java 7), or 2.17.0 (for Java 8 and later).
+
+In prior releases confirm that if the JDBC Appender is being used it is not configured to use any protocol other than java.
+
+References
+
+CVE-2021-44832
+
+LOG4J2-3242
+
+CVE-2021-45105
+
+Summary
+
+Infinite recursion in lookup evaluation
+
+CVSS 3.x Score &amp; Vector
+
+5.9 MEDIUM (CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H)
+
+Components affected
+
+log4j-core
+
+Versions affected
+
+[2.0-alpha1, 2.3.1) ∪ [2.4, 2.12.3) ∪ [2.13.0, 2.17.0)
+
+Versions fixed
+
+2.3.1 (for Java 6), 2.12.3 (for Java 7),</p>
+<hr>
+<p>ttribute silently ignored in TLS configuration
+
+CVSS 4.x Score &amp; Vector
+
+6.3 MEDIUM (CVSS:4.0/AV:N/AC:H/AT:N/PR:N/UI:N/VC:L/VI:N/VA:N/SC:N/SI:L/SA:N)
+
+Components affected
+
+Log4j Core
+
+Versions affected
+
+[2.12.0, 2.25.4) ∪ [3.0.0-alpha1, 3.0.0-beta3]
+
+Versions fixed
+
+2.25.4
+
+Description
+
+The fix for CVE-2025-68161 was incomplete: it addressed hostname verification only when enabled via the
+log4j2.sslVerifyHostName
+system property, but not when configured through the
+verifyHostName
+attribute of the &lt;Ssl&gt; element.
+
+Although the verifyHostName configuration attribute was introduced in Log4j Core 2.12.0, it was </p>
+<hr>
+<p>ot impacted by this vulnerability.
+
+Log4j 2 mitigation
+
+Upgrade to Log4j 2.3.1 (for Java 6), 2.12.2 (for Java 7), or 2.15.0 (for Java 8 and later).
+
+Credits
+
+This issue was discovered by Chen Zhaojun of Alibaba Cloud Security Team.
+
+References
+
+CVE-2021-44228
+
+LOG4J2-3198
+
+LOG4J2-3201
+
+LOG4J2-3242
+
+CVE-2020-9488
+
+Summary
+
+Improper validation of certificate with host mismatch in SMTP appender
+
+CVSS 3.x Score &amp; Vector
+
+3.7 LOW (CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N)
+
+Components affected
+
+log4j-core
+
+Versions affected
+
+[2.0-beta1, 2.3.2) ∪ [2.4, 2.12.3) ∪ [2.13.0, 2.13.2)
+
+Versions fixed
+
+2.3.2 (for Ja</p>

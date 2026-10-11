@@ -1,0 +1,20 @@
+[server]
+# Local-only by default. Do not expose the dashboard on a network without
+# putting authentication in front of it.
+address = "127.0.0.1"
+port = 8501
+headless = true
+maxUploadSize = 5
+enableXsrfProtection = true
+enableCORS = true
+
+[browser]
+gatherUsageStats = false
+serverAddress = "localhost"
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = "none"
+
+[theme]
+primaryColor = "#256abf"

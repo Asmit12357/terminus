@@ -1,0 +1,5 @@
+{
+ "https://curl.se/docs/CVE-2023-38545.html": "page1.html",
+ "https://logging.apache.org/log4j/2.x/security.html": "page2.html",
+ "https://httpd.apache.org/security/vulnerabilities_24.html": "page3.html"
+}
